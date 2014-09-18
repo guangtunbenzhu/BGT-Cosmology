@@ -1,4 +1,4 @@
-GBZ-Cosmology
+BGT-Cosmology
 =============
 
 Tools for cosmology.
