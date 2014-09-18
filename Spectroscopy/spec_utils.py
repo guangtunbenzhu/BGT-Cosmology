@@ -7,17 +7,16 @@ import numpy as np
 import logging
 from scipy import integrate
 
-# create a wavelength grid with constant dlog_lambda, i.e., in velocity space:
-def get_loglambda(minwave=900., maxwave=14400., dloglam=1.D-4, nwave=None):
-    """
-    get_loglambda(minwave=minwave, maxwave=maxwave, dloglam=dloglam, nwave=nwave)
-    """
+# create a center wavelength grid with constant width in log (i.e., velocity) space:
+get_loglambda = lambda minwave=900., maxwave=14400., dloglam=1.E-4: pow(10,np.arange(np.log10(minwave), np.log10(maxwave)+dloglam, dloglam))
 
-    logging.info
-    dloglam = 1.D-4
-    rloglam = (alog10(maxwave)-alog10(minwave))
-    nwave = long(rloglam/dloglam)
-    loglam = alog10(minwave)+(dindgen(nwave)+0.5)*dloglam
+def get_loglambda(minwave=900., maxwave=14400., dloglam=1.E-4):
+    """
+    create a center wavelength grid with constant width in log (i.e., velocity) space:
+        get_loglambda(minwave=minwave, maxwave=maxwave, dloglam=dloglam)
+    """
+    logging.info("default minwave=900 A, maxwave=14400 A, dloglam=1E-4")
+    return np.arange(np.log10(minwave), np.log10(maxwave)+dloglam, dloglam)
 
 
 # Useful Constants
