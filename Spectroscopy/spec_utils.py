@@ -8,7 +8,7 @@ import logging
 from scipy import integrate
 
 # create a center wavelength grid with constant width in log (i.e., velocity) space:
-get_loglambda = lambda minwave=900., maxwave=14400., dloglam=1.E-4: pow(10,np.arange(np.log10(minwave), np.log10(maxwave)+dloglam, dloglam))
+get_loglambda = lambda minwave=900., maxwave=14400., dloglam=5.E-5: pow(10,np.arange(np.log10(minwave), np.log10(maxwave)+dloglam, dloglam))
 
 def get_loglambda(minwave=900., maxwave=14400., dloglam=1.E-4):
     """
