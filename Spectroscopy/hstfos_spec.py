@@ -32,20 +32,36 @@ FOSG270H_red_index = np.searchsorted(master_loglam, np.log10(FOS_gratings[2].max
 #FOSG270H_loglam = master_loglam[FOSG270H_blue_index:FOSG270H_red_index]
 
 # Use slicing to create views
-new_loglam_index = ((FOSG130H_blue_index, FOSG130H_red_index), 
+new_index = ((FOSG130H_blue_index, FOSG130H_red_index), 
                     (FOSG190H_blue_index, FOSG190H_red_index),
                     (FOSG270H_blue_index, FOSG270H_red_index))
+new_size = FOSG270H_red_index - FOSG130H_blue_index
 
 basefile = ['h130.fits', 'h190.fits', 'h270.fits']
+out_basefile = 'spec_commonwave.fits'
 
-# Interpolation + Stitching
+# set up outputs
+tmp_formats = "f8, f8, i4, i4"
+out_formats = tmp_formats.replace('f', '('+str(new_size)+',)f')
+out_names = ['flux', 'ivar', 'wave_index_min', 'wave_index_max']
+out_dtype = np.dtype({'names':out_names, 'formats':out_format.split(', ')})
+
+# Interpolation + Stitching (no Stitching yet)
 for i in np.arange(qso.size):
     subpath = ((qso[i]['Name'].strip()).replace('+','p')).replace('-','m')
     for j in np.arange(len(basefile)):
         thisqso_infile = os.path.join(basepath, subpath, basefile[j])
         if os.path.isfile(thisqso_infile): 
            indata = fitsio.read(thisqso_infile)
-           inivar = 1./(indata.error)**2
-           tmp_flux, tmp_ivar=combine1fiber(inloglam, influx, objivar=inivar, newloglam=master_loglam(new_loglam_index[j][0]:new_loglam_index[j][1]))
+           tmp_flux, tmp_ivar=combine1fiber(np.log10(indata.wave), indata.flux, 
+               objivar=1./(indata.error)**2, newloglam=master_loglam[new_index[j][0]:new_index[j][1]])
+           newflux[new_index[j][0]:new_index[j][1]] = tmp_flux
+           newivar[new_index[j][0]:new_index[j][1]] = tmp_ivar
 
-           # Stitching
+        # Stitching
+
+        # Write out output
+        fits = fitsio.FITS(thisqso_outfile, 'w', clobber=True)
+        fits.write(outstr)
+        fits.close()
+
