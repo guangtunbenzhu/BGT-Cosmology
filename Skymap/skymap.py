@@ -12,6 +12,67 @@ from progressbar import ProgressBar
 import numpy.lib.recfunctions as recfunctions
 from pydl.pydlspec2d.spec2d import combine1fiber
 
+
+def wcs_getval(longitude, latitude, infiles, nointerp=True, noloop=True, verbose=True):
+
+    if (infiles.size != 1 or infiles.size !=2):
+       raise ValueError("The number of files to read must be either 1 or 2.")
+
+    # Looping over files
+    for ifile, this_infile in np.arange(infiles.size), infiles:
+        if infiles.size == 1:
+           indx = np.ones()
+        # If more than 1 files, assume the 1st file is for northern hemisphere, and 2nd for southern
+        if infiles.size == 2:
+           if ifile == 0: 
+              indx = np.where(latitude>=0.)
+           if ifile == 1:
+              indx = np.where(latitude<0.)
+
+        if np.count_nonzero(indx)>0:
+           hdr = fitsio.read_header(this_infile)
+           w = WCS(hdr)
+           xr, yr = w.wcs_pix2world(longitude[indx], latitude[indx], hdr, 0)
+           xpix1, ypix1 = np.fix(xr), np.fix(yr)
+           # bilinear interpolation weights
+           dx, dy = xpix1 - xr + 1.0, ypix1 - yr + 1.0
+
+           # Force pixel values to fall within the image boundaries.
+           # Any pixels outside the image are changed to the boundary pixels.
+           ibad = np.where(xpix1<0) 
+           if np.count_nonzero(ibad)>0:
+              xpix1[ibad] = 0
+              dx[ibad] = 1.0
+           ibad = np.where(ypix1<0)
+           if np.count_nonzero(ibad)>0:
+              ypix1[ibad] = 0
+              dy[ibad] = 1.0
+           ibad = np.where(xpix1 >= naxis1-1)
+           if np.count_nonzero(ibad)>0:
+              xpix1[ibad] = naxis1 - 2
+              dx[ibad] = 1.0
+           ibad = np.where(ypix1 >= naxis2-1)
+           if np.count_nonzero(ibad)>0:
+              ypix1[ibad] = naxis2 - 2
+              dy[ibad] = 1.0
+
+           # Create Nx4 array of bilinear interpolation weights
+           weight = [[dx*dy], [(1-dx)*dy], [dx*(1-dy)], [(1-dx)*(1-dy)]]
+
+           # Noloop: read the full image
+           if noloop:
+              image = fitsio.read(this_infile)
+              fimage = interpolate.RectBivariateSpline(np.arange(naxis1), np.arange(naxis2), image)
+              value = fimage(xpix1, ypix1)
+
+
+
+
+
+
+
+
+
 pbar = ProgressBar()
 
 astrodata_path = {'HSTFOS': os.path.join(os.environ['HOME'], 'AstroData/Quasars/HSTFOS'),
