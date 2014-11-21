@@ -8,7 +8,7 @@ class Spectrograph:
    """
 
    # - Attribute names are fixed. Therefore the __slots__
-   # - Ideally they values should be fixed as well (private) once initialized
+   # - Ideally their values should be fixed as well (private) once initialized
    #      Therefore the prefixing underscore _ (meaning semi-private) and the (seemingly redundant) properties
    __slots__ = ('_name', '_telescope', '_instrument', '_minwave', '_maxwave', '_width', '_resolution')
 

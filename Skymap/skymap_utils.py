@@ -29,8 +29,9 @@ def wcs_getval(longitude, latitude, infiles, interp=True, noloop=True, verbose=T
     value = np.zeros(longitude.size, dtype=np.float_)
 
     # Looping over files
-    for ifile in np.arange(infiles.size):
-        this_infile = infiles[ifile]
+    # for ifile in np.column_stack((np.arange(infiles.size),infiles)):
+    for ifile, this_infile in zip(np.arange(infiles.size), infiles):
+        # this_infile = infiles[ifile]
         if infiles.size == 1:
            indx = np.ones(longitude.size, dtype=np.bool_)
         # If more than 1 files, assume the 1st file is for northern hemisphere, and 2nd for southern
