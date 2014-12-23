@@ -1,6 +1,6 @@
 
 # Define Class Spectrograph
-class Spectrograph:
+class Spectrograph(object):
    """A spectrograph.
 
    These objects are spectrographs used in astronomy.
