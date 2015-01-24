@@ -4,16 +4,16 @@ Useful small tools for spectroscopic analysis
 """
 
 import numpy as np
-import bgt_path
+import datapath
 import os.path
 from skymap_utils import wcs_getval
 
 def dust_getmaps(maps):
-    path = bgt_path.get_data_path('dust')
-    files = {'EBV': ['SFD_dust_4096_ngp.fits', 'SFD_dust_4096_sgp.fits']),
-            'MASK': ['SFD_mask_4096_ngp.fits', 'SFD_mask_4096_sgp.fits']),
-               'T': ['SFD_temp_4096_ngp.fits', 'SFD_temp_4096_sgp.fits']),
-               'X': ['SFD_xmap_4096_ngp.fits', 'SFD_xmap_4096_sgp.fits']),
+    path = datapath.dustmap_path('dust')
+    files = {'EBV': ['SFD_dust_4096_ngp.fits', 'SFD_dust_4096_sgp.fits'],
+            'MASK': ['SFD_mask_4096_ngp.fits', 'SFD_mask_4096_sgp.fits'],
+               'T': ['SFD_temp_4096_ngp.fits', 'SFD_temp_4096_sgp.fits'],
+               'X': ['SFD_xmap_4096_ngp.fits', 'SFD_xmap_4096_sgp.fits'],
             }.get(maps,['SFD_dust_4096_ngp.fits', 'SFD_dust_4096_sgp.fits']) 
 
     fullnames = []

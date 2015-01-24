@@ -23,7 +23,7 @@ class _BaseNMF(object):
 
     def __new__(cls):
     
-class MultiplicativeNMF(_BaseNMF):
+class NMF(_BaseNMF):
     """NMF with multiplicative update rules
 
     Parameters
@@ -56,7 +56,7 @@ class MultiplicativeNMF(_BaseNMF):
     >>> import numpy as np
     ... X.shape = (100, 3000)
     >>> From nmf import  NMF
-    >>> nmfbasis = MultiplicativeNMF(n_component=12, init='random', seed='0.13')
+    >>> nmfbasis = NMF(n_component=12, init='random', seed='0.13')
     >>> nmfbasis.fit(X)
 
     References
@@ -67,43 +67,51 @@ class MultiplicativeNMF(_BaseNMF):
     - nmf.py in scikit-learn
     """
 
-    def __init__(self, n_component=None, initial=None, sparseness=None, ranseed=None, 
-                 tol=1E-5, maxiter=1000):
+    def __init__(self, n_component, ranseed=None, tol=1E-5, maxiter=1000):
+        """
+        Take one argument, n_component
+        """
         self._n_component = n_component
-        self._initial = initiial
-        self._tol = tol
-        if sparseness not in (None, 'data', 'component'):
-           raise ValueError("Invalid sparseness parameter: got %r instead of one of %r" %
-                           (sparseness, (None, 'data', 'components')))
-        self._sparseness = sparseness
-        self._maxiter = maxiter
         self._ranseed = ranseed
+        self._tol = tol
+        self._maxiter = maxiter
 
-    def _initialize(self, X):
-        if initial = 'random':
-           W, H = pass
-        return W, H
+    def _initialize(self, X, Winit, Hinit):
+        if Winit==None:
+           W = np.random.rand(X.shape[0], self._n_component)
+        else:
+           if (Winit.shape != (X.shape[0], self._n_component): 
+              raise ValueError("Initial values have wrong shape.")
+           W = np.copy(Winit)
+        if Hinit==None:
+           H = np.random.rand(self._n_component, X.shape[1])
+        else 
+           if (Hinit.shape != (self._n_component, X.shape[1])
+              raise ValueError("Initial values have wrong shape.")
+           H = np.copy(Hinit)
+        return (W, H)
 
     # Main method
-    def construct(self, X, Weight=None)
+    def construct(self, X, Weight, Winit=None, Hinit=None)
         """Construct (Learn) an NMF model for input data matrix X 
-
+        If given, Winit, Hinit should be given together
         """
 
-        # Core code
-
         XWeight = X*Weight
-        W, H = self._initialize(X)
+        W, H = self._initialize(X, Winit, Hinit)
 
-        # np.dot: 1D - Euclidean norm; 2D - Frobenius norm
+        # np.dot: 1D - inner product, 2D - matrix multiplication
+        # norm: 1D - Euclidean norm; 2D - Frobenius norm
         # scipy.linalg.norm - faster than numpy.linalg.norm for 2D Frobenius norm?
+        # scipy.linalg is better than numpy.linalg in general
         chi_squared = LA.norm((X-np.dot(W,H))*Weight)
         chi_squared_old = 1.e+100
-        niter = 1
+        niter = 0
 
 
         # Need a sparse version of this
-        while niter < self._maxiter and np.fabs(chi_squared-chi_squared_old)/chi_squared_old > tol):
+        while niter<self._maxiter and np.fabs(chi_squared-chi_squared_old)/chi_squared_old > tol):
+
             # Update H first. Does the order matter?
             H_up = np.dot(W.T, XWeight)
             H_down = np.dot(W.T, np.dot(W,H)*Weight)
@@ -114,16 +122,13 @@ class MultiplicativeNMF(_BaseNMF):
             W_down = np.dot(np.dot(W,H)*Weight, H.T)
             W = W*W_up/W_down
 
-            # chi_squared
+            # chi_squared, a copy or a view?
             chi_squared_old = chi_squared
             chi_squared = LA.norm((X-np.dot(W,H))*Weight)
 
             # Some quick check. May need its error class ...
             if not np.isfinite(chi_squared):
                raise ValueError("NMF construction failed, likely due to missing data")
-
-            if verbose: 
-               pass
 
             niter += 1
 

@@ -43,7 +43,8 @@ def rest_allspec(overwrite=False):
     on to the same rest-frame wavelength grid
     """
 
-    path = join(datapath.sdss_path(), 'v5_7_6')
+    path1 = join(datapath.sdss_path(), 'v5_7_6')
+    path2 = join(datapath.sdss_path(), 'specDR12')
 
     # check output files
     bands = _allinone_rest_bands
@@ -101,11 +102,16 @@ def rest_allspec(overwrite=False):
 
         # read and interpolate
         try:
-            tmp_outflux, tmp_outivar = sdssspec.load_interp_spec(objs[i], tmp_loglam, path, rest=True)
+            tmp_outflux, tmp_outivar = sdssspec.load_interp_spec(objs[i], tmp_loglam, path1, rest=True)
             rest_allflux[rest_loc[0]:rest_loc[1],i] = tmp_outflux
             rest_allivar[rest_loc[0]:rest_loc[1],i] = tmp_outivar
         except (IndexError, TypeError, NameError, ValueError):
-            print("Error reading plate {0} mjd {1} fiber {2}".format(objs[i]['PLATE'], objs[i]['MJD'], objs[i]['FIBER']))
+            try:
+                tmp_outflux, tmp_outivar = sdssspec.load_interp_spec(objs[i], tmp_loglam, path2, rest=True)
+                rest_allflux[rest_loc[0]:rest_loc[1],i] = tmp_outflux
+                rest_allivar[rest_loc[0]:rest_loc[1],i] = tmp_outivar
+            except (IndexError, TypeError, NameError, ValueError):
+                print("Error reading plate {0} mjd {1} fiber {2}".format(objs[i]['PLATE'], objs[i]['MJD'], objs[i]['FIBER']))
 
         # output
 

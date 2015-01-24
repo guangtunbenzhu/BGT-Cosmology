@@ -27,10 +27,11 @@ def resample_spec(inloglam, influx, inivar, newloglam):
 def interpol_spec(inloglam, influx, inivar, newloglam):
     """interpolate the spectra onto a desired wavelength grid
     a simpler, faster and not worse version of combine1fiber
-    works if the binning of newloglam is similar to that of loglam
+    works if the sampling of newloglam is similar to that of inloglam
     to resample a spectrum, use resample_spec which does convolution properly
     fine-tuned for logarithmic binning 
-    hardcoded parameters: bkptbin; maxsep; 1 pixel around ivar==0
+    hardcoded parameters: binsize, maxsep; 1 pixel around ivar==0
+    to do: select bkptbin, maxsep
     inloglam: sorted
     newloglam: sorted
     """
@@ -55,7 +56,7 @@ def interpol_spec(inloglam, influx, inivar, newloglam):
     # maxsep = 2.0*binsize
 
     # Check boundary
-    inbetween = (np.where(np.logical_and(newloglam>=np.min(inloglam), newloglam<=np.max(inloglam))))[0]
+    inbetween = (np.where(np.logical_and(newloglam>np.amin(inloglam), newloglam<np.amax(inloglam))))[0]
     if inbetween.size == 0:
        print("newloglam not in range, no interpolation is necessary.")
        return (newflux, newivar)
@@ -85,7 +86,10 @@ def interpol_spec(inloglam, influx, inivar, newloglam):
 
     # No smoothing
     #f = UnivariateSpline(inloglam[inivar>0], influx[inivar>0], w=inivar[inivar>0], k=3, s=0)
-    f = interp1d(inloglam[inivar>0], influx[inivar>0], kind='cubic')
+    tmploglam = inloglam[inivar>0]
+    tmpflux = influx[inivar>0]
+    tmpivar = inivar[inivar>0]
+    f = UnivariateSpline(tmploglam, tmpflux, w=tmpivar, k=3, s=0)
     newflux[inbetween] = f(newloglam[inbetween])
 
     # Linear
