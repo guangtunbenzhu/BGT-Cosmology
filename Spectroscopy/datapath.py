@@ -3,10 +3,11 @@ Path to various datasets
 Need to clean up once the package is well rewritten
 """
 
+from os import getenv
 from os.path import join
 
 # This should be moved to __inti__.py in the future
-_parent_path = '/Users/Benjamin/AstroData'
+_parent_path = getenv('ASTRODATA', '/Users/Benjamin/AstroData')
 
 # HSTFOS
 def hstfos_path():
@@ -49,4 +50,16 @@ def dustmap_path():
     """Path to Dust
     """
     return join(_parent_path, 'Dust/SFD')
+
+# NMF
+def nmf_path():
+    """Path to Dust
+    """
+    return join(_parent_path, 'NMF')
+
+# Absorbers
+def absorber_path():
+    """Path to Dust
+    """
+    return join(_parent_path, 'Absorbers')
 

@@ -34,10 +34,15 @@ def interpol_spec(inloglam, influx, inivar, newloglam):
     to do: select bkptbin, maxsep
     inloglam: sorted
     newloglam: sorted
+
+    Only works for one spectrum for now.
     """
 
     if (inloglam.size != influx.size) or (inloglam.size != inivar.size):
        raise ValueError("The shapes of inputs don't match")
+
+    if (inloglam.ndim != 1):
+       raise ValueError("I can only take one spectrum for now.")
 
     # Initialization
     newflux = np.zeros(newloglam.size)
@@ -93,6 +98,8 @@ def interpol_spec(inloglam, influx, inivar, newloglam):
     newflux[inbetween] = f(newloglam[inbetween])
 
     # Linear
+    # print(inloglam.shape)
+    # print(inivar.shape)
     g = interp1d(inloglam, inivar, kind='linear')
     newivar[inbetween] = g(newloglam[inbetween])
     #  

@@ -1,3 +1,7 @@
+"""
+
+"""
+
 from __future__ import division, print_function
 from os.path import isfile, join
 import numpy as np
@@ -17,7 +21,7 @@ def spplate_filename(platein, mjdin, path):
     if plate.size != 1 or mjd.size !=1:
        raise ValueError("I can only take one plate and one mjd.")
 
-    return join(path,"spPlate-{0:4d}-{1:05d}.fits".format(int(plate), int(mjd)))
+    return join(path,"spPlate-{0:04d}-{1:05d}.fits".format(int(plate), int(mjd)))
 
 # http://data.sdss3.org/datamodel/files/SPECTRO_REDUX/RUN2D/PLATE4/spPlate.html
 def read_spec(platein, mjdin, fiberin, path, output): 
