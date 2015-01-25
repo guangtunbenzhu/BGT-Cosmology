@@ -60,10 +60,11 @@ def load_interp_spec(objs, newloglam, path, rest=False):
     # read in spec
     output = ('loglam', 'flux', 'ivar',)
     for (iobj, thisobj)  in zip(np.arange(objs.size), objs):
+        # Note it is in quasar's rest-frame
         thisdata = read_spec(thisobj['PLATE'], thisobj['FIBER'], path)
         # print(thisdata.shape)
         tmpz = thisobj['Z'] if rest else 0.
-        inloglam = np.log10(thisdata['WAVE']/(1.+tmpz))
+        inloglam = np.log10(thisdata['WAVE']*(1.+thisdata['Z'])/(1.+tmpz))
         influx = thisdata['RESIDUAL'] # Only want the residual
         inivar = thisdata['IVAR']*np.power(thisdata['NMF_CONTINUUM']*thisdata['MED_CONTINUUM'], 2)
         (flux[iobj, :], ivar[iobj, :]) = specutils.interpol_spec(inloglam, influx, inivar, newloglam)
