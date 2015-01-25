@@ -11,7 +11,9 @@ import fitsio
 import datapath
 import allinonespec as aio
 import sdssspec as sdssspec
+from scipy.stats import nanmean, nanmedian
 from progressbar import ProgressBar
+
 
 # prefixes
 _allinone_observer_bands = ['OPTICAL']
@@ -196,4 +198,74 @@ def rest_allspec_readin():
 
     return (master_wave, rest_allflux, rest_allivar)
 
+def feiimgii_composite():
+
+    # Read in
+    objs_ori = elg_readin()
+    (master_wave, rest_allflux, rest_allivar) = rest_allspec_readin()
+    master_loglam = np.log10(master_wave)
+
+    wave_pos = np.array([2200., 4050.])
+    zmin = _minmaxwave[0]/wave_pos[0]-1.
+    zmax = _minmaxwave[1]/wave_pos[1]-1.
+    zindex = (np.where(np.logical_and(np.logical_and(objs_ori['zGOOD']==1, objs_ori['Z']>zmin), objs_ori['Z']<zmax)))[0]
+
+    rest_loc = np.searchsorted(master_wave, wave_pos)
+    outwave = master_wave[rest_loc[0]:rest_loc[1]]
+    outloglam = np.log10(outwave)
+
+    tmpflux = rest_allflux[rest_loc[0]:rest_loc[1],zindex]
+    tmpivar = rest_allivar[rest_loc[0]:rest_loc[1],zindex]
+    fluxmean = np.zeros((tmpflux.shape)[0])
+    #fluxmean = np.average(tmpflux, axis=1, weights=tmpivar.astype(bool))
+    fluxmedian = np.zeros((tmpflux.shape)[0])
+    fluxflag = np.ones(fluxmedian.size)
+    for i in np.arange((tmpflux.shape)[0]):
+        iuse = (np.where(tmpivar[i,:]>0))[0]
+        fluxmedian[i] = np.median(tmpflux[i,iuse])
+        fluxmean[i] = np.mean(tmpflux[i,iuse])
+
+    # Mask out useless wavelength ranges
+    # left 2300
+    wave_pos = np.array([2200.])
+    rest_loc = np.searchsorted(outwave, wave_pos)
+    fluxflag[0:rest_loc[0]] = 0
+    # Fe II 2350
+    wave_pos = np.array([2330., 2420])
+    rest_loc = np.searchsorted(outwave, wave_pos)
+    fluxflag[rest_loc[0]:rest_loc[1]] = 0.
+    # Fe II 2600
+    wave_pos = np.array([2570., 2640])
+    rest_loc = np.searchsorted(outwave, wave_pos)
+    fluxflag[rest_loc[0]:rest_loc[1]] = 0.
+    # Mg II 2800
+    wave_pos = np.array([2770., 2820])
+    rest_loc = np.searchsorted(outwave, wave_pos)
+    fluxflag[rest_loc[0]:rest_loc[1]] = 0.
+    # Mg I 2853
+    wave_pos = np.array([2843., 2863])
+    rest_loc = np.searchsorted(outwave, wave_pos)
+    fluxflag[rest_loc[0]:rest_loc[1]] = 0.
+    # right 2900
+    wave_pos = np.array([2900.])
+    rest_loc = np.searchsorted(outwave, wave_pos)
+    fluxflag[rest_loc[0]:] = 0.
+
+    imask = (np.where(fluxflag>0.))[0]
+    if imask.size>10: 
+       x = outloglam[imask]
+       # Mean
+       y = fluxmean[imask]
+       z = np.polyfit(x, y, 3)
+       p = np.poly1d(z)
+       continuum = p(outloglam)
+       norm_fluxmean = fluxmean/continuum
+       # Median
+       y = fluxmedian[imask]
+       z = np.polyfit(x, y, 3)
+       p = np.poly1d(z)
+       continuum = p(outloglam)
+       norm_fluxmedian = fluxmedian/continuum
+   
+    return (outwave, fluxmean, fluxmedian, norm_fluxmean, norm_fluxmedian)
 
