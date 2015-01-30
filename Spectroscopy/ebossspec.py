@@ -13,6 +13,7 @@ import allinonespec as aio
 import sdssspec as sdssspec
 from scipy.stats import nanmean, nanmedian
 from progressbar import ProgressBar
+import lmfit
 
 
 # prefixes
@@ -198,6 +199,31 @@ def rest_allspec_readin():
 
     return (master_wave, rest_allflux, rest_allivar)
 
+def composite_engine(loglam, flux, ivar, mask, polyorder=2):
+
+    nwave = loglam.size
+    nobj = flux.size/loglam.size
+
+    imask = (np.where(mask==1))[0]
+    if imask.size>10: 
+       x = loglam[imask]
+       # Mean
+       obj_median = nanmedian(flux[imask, :], axis=0)
+       y_median = flux/obj_median.reshape(1, nobj)
+       norm_median = np.zeros(y_median.shape)
+       for iobj in np.arange(nobj):
+           y = y_median[imask, iobj]
+           z = np.polyfit(x, y, polyorder)
+           p = np.poly1d(z)
+           continuum = p(loglam)
+           norm_median[:,iobj] = y_median[:, iobj]/continuum
+
+       # Composite
+       median_norm_median = nanmedian(norm_median, axis=1)
+       mean_norm_median = nanmean(norm_median, axis=1)
+
+       return (median_norm_median, mean_norm_median)
+
 def feiimgii_composite():
 
     # Read in
@@ -268,4 +294,85 @@ def feiimgii_composite():
        norm_fluxmedian = fluxmedian/continuum
    
     return (outwave, fluxmean, fluxmedian, norm_fluxmean, norm_fluxmedian)
+
+def DoubleGaussian():
+    """Fix the width and use separation as a free parameter"""
+    pass
+
+def make_model(lines):
+    """Make a model for a normalized spectrum 
+    In logarithmic space
+    """
+
+    dloglam = 1E-4 # or 69./3E5/np.log(10.)
+    left_bound = 10.*dloglam # pixels
+    right_bound = 5.*dloglam # pixels
+    width = 200./3E5/np.log(10.) # Delta_v/c in unit of log_10(lambda), 200 km/s
+    min_width = 50./3E5/np.log(10.) # 
+    max_width = 2000./3E5/np.log(10.) #
+    namp = 10 # maximum amplitude
+
+    full_model = {}
+
+    # Underlying quadratic model
+    tmp_prefix = 'Quadratic_'
+    full_model[0] = lmfit.models.QuadraticModel(prefix=tmp_prefix)
+
+    pars = full_model[0].make_params()
+    pars[tmp_prefix+'a'].set(0., min=-0.1, max=0.1)
+    pars[tmp_prefix+'b'].set(0., min=-0.5, max=0.5)
+    pars[tmp_prefix+'c'].set(1., min=0.9,  max=1.1)
+
+    # Line Gaussian model
+    # Line: 'ELEMENT', 'WAVE', 'EW', 'SIGN'
+    nlines = lines.size
+    if nlines==0: return (full_model[0], pars)
+
+    for (iline, this_line) in zip(np.arange(nlines)+len(full_model), lines):
+         tmp_prefix = this_line['ELEMENT']+'_'+'{0:02d}'.format(iline)+'_'
+         full_model[iline] = lmfit.models.GaussianModel(prefix=tmp_prefix)
+ 
+         pars.update(full_model[iline].make_params())
+         tmp_wave = this_line['WAVE']-1.
+         tmp_loglam = np.log10(this_line['WAVE']-1.)
+
+         tmp_left = np.log10(this_line['WAVE']-left_bound)
+         tmp_right = np.log10(this_line['WAVE']-right_bound)
+         pars[tmp_prefix+'center'].set(tmp_loglam, min=tmp_left, max=tmp_right)
+         pars[tmp_prefix+'sigma'].set(width, min=min_width, max=max_width)
+
+         tmp_sign = this_line['SIGN']
+         tmp_amp = tmp_sign*this_line['EW']/tmp_wave/np.log(10.)
+         if tmp_sign>0:
+            pars[tmp_prefix+'amplitude'].set(tmp_amp, min=0, max=tmp_amp*namp)
+         else:
+            pars[tmp_prefix+'amplitude'].set(tmp_amp, min=tmp_amp*namp, max=0)
+
+    model = full_model[0]
+    for imod in np.arange(len(full_model)-1)+1:
+        model = model+full_model[imod]
+
+    return (model, pars)
+
+def line_property(loglam, flux, lines, npixels=15):
+    """Measure line properties in a normalized spectrum in the rest frame:
+    Total equivalent width: REW
+    Velocity profile: REW(velocity)/REW(total)
+    """
+    
+    nlines = lines.size
+    ew_profile = np.zeros(nlines, dtype=[('WAVE', '({0},)f4'.format(npixels)), ('VEL', '({0},)f4'.format(npixels)), ('EW', '({0},)f4'.format(npixels))])
+    for (iline, this_line) in zip(np.arange(nlines), lines):
+        tmp_loglam0 = np.log10(this_line['WAVE'])
+        tmp_left = np.log10(this_line['WAVELEFT'])
+        rest_loc = np.searchsorted(loglam, tmp_left)
+        #print(rest_loc)
+        #print(np.cumsum(flux[rest_loc:(rest_loc+npixels)]))
+        ew_profile[iline]['EW'][:] = np.cumsum(flux[rest_loc:(rest_loc+npixels)])
+        #print(ew_profile[iline]['EW'])
+        ew_profile[iline]['VEL'][:] = (loglam[rest_loc:(rest_loc+npixels)]-tmp_loglam0)*np.log(10.)*3E5
+        ew_profile[iline]['WAVE'][:] = np.power(10, loglam[rest_loc:(rest_loc+npixels)])
+
+    return ew_profile
+
 

@@ -204,7 +204,7 @@ def mgii_composite():
     master_loglam = np.log10(master_wave)
     # mask out useless wavelength ranges
     # left 2300
-    wave_pos = np.array([2300.])
+    wave_pos = np.array([2200.])
     rest_loc = np.searchsorted(master_wave, wave_pos)
     rest_allivar[0:rest_loc[0],:] = 0.
     # Fe II 2350
@@ -239,7 +239,7 @@ def mgii_composite():
            continuum = p(master_loglam)
            normalized_rest_allflux[:,i] = rest_allflux[:,i]/continuum
     
-    wave_pos = np.array([2300., 2900.])
+    wave_pos = np.array([2200., 2900.])
     rest_loc = np.searchsorted(master_wave, wave_pos)
 
     outwave = master_wave[rest_loc[0]:rest_loc[1]]
