@@ -25,7 +25,8 @@ _subpath = 'starburst/fos_ghrs_spectra'
 _minmaxwave = [3600., 10400.]
 
 #mgii_index = np.array([12, 18, 19, 20, 25, 27, 28, 32, 33, 34, 35, 36, 37, 44, 45])
-_mgii_index = np.array([12, 18, 19, 20, 25, 28, 32, 34, 35, 45])
+#_mgii_index = np.array([12, 18, 19, 20, 25, 28, 32, 34, 35, 45])
+_mgii_index = np.array([12, 18, 19, 20, 25, 28, 32, 34, 35])
 #_mgii_index = np.array([12, 18, 19, 20, 25, 27, 28, 32, 33, 34, 35, 45])
 #_mgii_index = np.array([12, 18, 19, 20, 25, 28, 32, 33, 34, 35, 45])
 #_mgii_index = np.array([18, 20, 25, 28, 32, 33, 35, 45])
