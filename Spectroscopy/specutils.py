@@ -116,3 +116,17 @@ def interpol_spec(inloglam, influx, inivar, newloglam):
 
     return (newflux, newivar)
 
+def airtovac(air0):
+    air = np.ravel(np.array(air0))
+    vac = np.zeros(air.shape)
+    vac[:] = air[:]
+    ig = (np.where(air>=2000.))[0]
+    if ig.size>0:
+       sigma2 = 1E8/np.power(vac[ig],2)
+       factor = 1E0+5.792105E-2/(238.0185E0 - sigma2)+1.67917E-3/(57.362E0 - sigma2)
+       vac[ig] = air[ig]*factor
+    return vac
+
+def vactoair(vac):
+    return vac/(1.0+2.735182E-4+131.4182/np.power(vac,2) + 2.76249E8/np.power(vac,4))
+

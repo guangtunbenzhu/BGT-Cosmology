@@ -63,3 +63,9 @@ def absorber_path():
     """
     return join(_parent_path, 'Absorbers')
 
+# atomic
+def atomic_path():
+    """Path to Dust
+    """
+    return join(_parent_path, 'Atomic')
+

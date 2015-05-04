@@ -22,6 +22,8 @@ _allinone_rest_bands     = ['NUV', 'OPTICAL']
 _allinone_observer_fileprefix = 'AIO_ELG_eBOSS_ObserverFrame_'
 _allinone_rest_fileprefix     = 'AIO_ELG_eBOSS_SDSSRestFrame_'
 _elgfile = 'spAll-ELG-v5.4-zQ.fits'
+_compositefile = 'feiimgii_composite.fits'
+_bootstrap_compositefile = 'feiimgii_composite_bootstrap.fits'
 _minmaxwave = [3600., 10400.]
 _contmask = np.array([[2200., 2249.88-7.],
                       [2260.78+7., 2297.58-7.],
@@ -39,6 +41,13 @@ _oiimask = np.array([[3100., 3189.67-7.],
 def elg_filename():
     path = datapath.sdss_path()
     return join(path, 'eBOSS', _elgfile)
+
+def feiimgii_composite_filename(bootstrap=False):
+    path = datapath.sdss_path()
+    if bootstrap:
+       return join(path, 'eBOSS', _bootstrap_compositefile)
+    else:
+       return join(path, 'eBOSS', _compositefile)
 
 def elg_readin():
     infile = elg_filename()
@@ -234,6 +243,17 @@ def calculate_continuum(loglam, flux, ivar, mask, polyorder=2):
     cont = p(loglam)
     return cont
 
+def calculate_continuum_powerlaw(loglam, flux, ivar, mask):
+    """
+    """
+    x = loglam[(mask) & (ivar>0)]
+    y = flux[(mask) & (ivar>0)]
+    z = np.polyfit(x, y, polyorder)
+    p = np.poly1d(z)
+    cont = p(loglam)
+    return cont
+
+
 def new_composite_engine(wave, flux, ivar, polyorder=2, oii=False):
     """All the composites should be made with this engine.
     - mean doesn't work for noisy data yet
@@ -273,6 +293,55 @@ def new_composite_engine(wave, flux, ivar, polyorder=2, oii=False):
        p = np.poly1d(z)
        continuum = p(loglam)
        mean_norm_median = mean_norm_median/continuum
+
+    return (median_norm_median, mean_norm_median)
+
+def new_composite_engine_bootstrap(wave, flux, ivar, polyorder=2, oii=False, nbootstrap=300):
+    """All the composites should be made with this engine.
+    - mean doesn't work for noisy data yet
+    - mask is given by _contmask
+    """
+    loglam = np.log10(wave)
+    nwave = wave.size
+    nobj = flux.size/wave.size
+
+    mask = make_mask(wave, oii=oii)
+    masksize = np.count_nonzero(mask)
+    if masksize>10: 
+       x = loglam[mask]
+       # Median, not entirely necessary
+       obj_median = nanmedian(flux[mask, :], axis=0)
+       y_median = flux/obj_median.reshape(1, nobj)
+       norm_median = np.zeros(y_median.shape)
+       for iobj in np.arange(nobj):
+           continuum = calculate_continuum(loglam, flux[:,iobj], ivar[:,iobj], mask, polyorder)
+           norm_median[:,iobj] = y_median[:, iobj]/continuum
+
+       norm_median[ivar<=0] = np.nan
+
+       # bootstrapping:
+       median_norm_median = np.zeros((nwave, nbootstrap))
+       mean_norm_median = np.zeros((nwave, nbootstrap))
+
+       # Composite
+       for iboot in np.arange(nbootstrap):
+           index_boot = np.random.randint(0, nwave, size=nobj)
+           median_norm_median_tmp = nanmedian(norm_median[:, index_boot], axis=1)
+           mean_norm_median_tmp = nanmean(norm_median[:, index_boot], axis=1)
+
+           # Median
+           y = median_norm_median_tmp[mask]
+           z = np.polyfit(x, y, polyorder)
+           p = np.poly1d(z)
+           continuum = p(loglam)
+           median_norm_median[:, iboot] = median_norm_median_tmp/continuum
+
+           # Mean
+           y = mean_norm_median_tmp[mask]
+           z = np.polyfit(x, y, polyorder)
+           p = np.poly1d(z)
+           continuum = p(loglam)
+           mean_norm_median[:, iboot] = mean_norm_median_tmp/continuum
 
     return (median_norm_median, mean_norm_median)
 
@@ -347,6 +416,59 @@ def new_feiimgii_composite(zmin=0.6, zmax=1.2, polyorder=3):
     
     return (outwave, fluxmedian, fluxmean, oiifluxmedian, oiifluxmean)
 
+def new_feiimgii_composite_bootstrap(zmin=0.6, zmax=1.2, polyorder=3, nbootstrap=300):
+
+    # Read in
+    objs_ori = elg_readin()
+    (master_wave, rest_allflux, rest_allivar) = rest_allspec_readin()
+    master_loglam = np.log10(master_wave)
+
+    wave_pos = np.array([2200., 4050.])
+    # zmin<z<zmax; zGOOD==1; CLASS='GALAXY'
+    zindex = (np.where(np.logical_and(np.logical_and(np.logical_and(
+                 objs_ori['zGOOD']==1, objs_ori['Z']>zmin), objs_ori['Z']<zmax), objs_ori['CLASS']=='GALAXY')))[0]
+    print zindex.shape
+
+    rest_loc = np.searchsorted(master_wave, wave_pos)
+    outwave = master_wave[rest_loc[0]:rest_loc[1]]
+    outloglam = np.log10(outwave)
+
+    tmpflux = rest_allflux[rest_loc[0]:rest_loc[1],zindex]
+    tmpivar = rest_allivar[rest_loc[0]:rest_loc[1],zindex]
+
+    (fluxmedian, fluxmean) = new_composite_engine_bootstrap(outwave, tmpflux, tmpivar, polyorder, nbootstrap=nbootstrap)
+    (oiifluxmedian, oiifluxmean) = new_composite_engine_bootstrap(outwave, tmpflux, tmpivar, polyorder=2, oii=True, nbootstrap=nbootstrap)
+    
+    return (outwave, fluxmedian, fluxmean, oiifluxmedian, oiifluxmean)
+
+
+def save_feiimgii_composite(bootstrap=False, nboostrap=300, overwrite=False):
+    if bootstrap:
+       (outwave, fluxmedian, fluxmean, oiifluxmedian, oiifluxmean) = new_feiimgii_composite_bootstrap(nbootstrap=nbootstrap)
+       nwave = outwave.size
+       outstr_dtype = [ ('WAVE', 'f4', (nwave, )), 
+                        ('FLUXMEDIAN', 'f4', (nwave, nbootstrap)), 
+                        ('FLUXMEAN', 'f4', (nwave, nbootstrap)),
+                        ('OII_FLUXMEDIAN', 'f4', (nwave, nbootstrap)), 
+                        ('OII_FLUXMEAN', 'f4', (nwave, nbootstrap)),
+                        ]
+    else:
+       (outwave, fluxmedian, fluxmean, oiifluxmedian, oiifluxmean) = new_feiimgii_composite()
+       nwave = outwave.size
+       outstr_dtype = [ ('WAVE', 'f4', (nwave, )), 
+                        ('FLUXMEDIAN', 'f4', (nwave, )), 
+                        ('FLUXMEAN', 'f4', (nwave, )),
+                        ('OII_FLUXMEDIAN', 'f4', (nwave, )), 
+                        ('OII_FLUXMEAN', 'f4', (nwave, ))]
+
+    outfile = feiimgii_composite_filename(bootstrap=bootstrap)
+    outstr  = np.array([(outwave, fluxmedian, fluxmean, oiifluxmedian, oiifluxmean)],
+                         dtype=outstr_dtype)
+
+    fits = fitsio.FITS(outfile, 'rw', clobber=overwrite)
+    fits.write(outstr)
+    fits.close()
+
 def make_model(lines):
     """Make a model for a normalized spectrum 
     In logarithmic space
@@ -403,6 +525,8 @@ def make_model(lines):
     return (model, pars)
 
 
+# All stuff below must be obsolete
+# The new one is new_feiimgii_composite
 def feiimgii_composite(zmin=0.6, zmax=1.2):
 
     # Read in
@@ -558,3 +682,4 @@ def speclines(region='2800'):
        lines = zeros(nlines, dtype=[('SIGN', 'i'),('ELEMENT','S20'),('WAVE','f4'),('EW','f4'), ('WAVELEFT', 'f4')])
        lines[0] = (-1, 'MgII', 2796.35, 2., 2789.)
        lines[1] = (-1, 'MgII', 2803.53, 2., 2798.)
+
