@@ -3,18 +3,46 @@
 Useful small tools for spectroscopic analysis
 """
 
+# Python 3 vs. 2
 from __future__ import print_function, division
+
+# Standard Library Modules
 import numpy as np
 from scipy.interpolate import UnivariateSpline, interp1d
+from scipy import constants
+
+# Third Party Modules
+
+# Your Own Modules
+
+
+#####################
+# Code starts here  #
+#####################
 
 # Create a center wavelength grid with constant width in log (i.e., velocity) space:
 # Input is in Angstrom, output is log10(lambda/Angstrom)
-def get_loglam(minwave=448., maxwave=10402., dloglam=1.E-4):
+def get_loglam(minwave=448., maxwave=10402., dloglam=1.E-4, pivot=None):
     """Return a central wavelength grid uniform in velocity space
     """
     if minwave>maxwave:
-       raise ValueError("Your maximum wavelength is smaller than the minimum wavelength.")
-    return np.arange(np.log10(minwave), np.log10(maxwave), dloglam)+0.5*dloglam
+        raise ValueError("Your maximum wavelength is smaller than the minimum wavelength.")
+    if not pivot: 
+        return np.arange(np.log10(minwave), np.log10(maxwave), dloglam)+0.5*dloglam
+    else:
+        # assert pivot.size == 1, "I can only handle one pivotal wavelength"
+        log10_pivot_minwave = np.log10(minwave)+(np.log10(pivot)-np.log10(minwave))%dloglam \
+                              -0.5*dloglam
+        return np.arange(log10_pivot_minwave, np.log10(maxwave), dloglam)+0.5*dloglam
+
+def get_velgrid(dloglam=1.E-4, dvel=None, noffset=100):
+    """
+    \pm noffset*dvel km/s
+    """
+    outvel = np.arange(2*noffset)
+    if not dvel:
+       dvel = np.log(10.)*dloglam*constants.c/1E3
+    return (np.arange(2*noffset)-noffset)*dvel
 
 def resample_spec(inloglam, influx, inivar, newloglam):
     """
@@ -37,6 +65,11 @@ def interpol_spec(inloglam, influx, inivar, newloglam):
 
     Only works for one spectrum for now.
     """
+
+    # Quickcheck of the inputs
+    # assert inloglam.size == influx.size
+    # assert inloglam.size == inivar.size
+    # assert inloglam.ndim == 1
 
     if (inloglam.size != influx.size) or (inloglam.size != inivar.size):
        raise ValueError("The shapes of inputs don't match")
