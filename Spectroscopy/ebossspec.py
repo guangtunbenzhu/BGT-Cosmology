@@ -49,6 +49,12 @@ def feiimgii_composite_filename(bootstrap=False):
     else:
        return join(path, 'eBOSS', _compositefile)
 
+def feiimgii_composite_readin(bootstrap=False):
+    """
+    """
+    infile = feiimgii_composite_filename(bootstrap=bootstrap)
+    return (fitsio.read(infile))[0]
+
 def elg_readin():
     infile = elg_filename()
     if isfile(infile):
@@ -254,7 +260,7 @@ def calculate_continuum_powerlaw(loglam, flux, ivar, mask):
     return cont
 
 
-def new_composite_engine(wave, flux, ivar, polyorder=2, oii=False):
+def new_composite_engine(wave, flux, ivar, polyorder=2, oii=False, bootstrap=False, nbootstrap=_nbootstrap):
     """All the composites should be made with this engine.
     - mean doesn't work for noisy data yet
     - mask is given by _contmask
@@ -276,27 +282,54 @@ def new_composite_engine(wave, flux, ivar, polyorder=2, oii=False):
            norm_median[:,iobj] = y_median[:, iobj]/continuum
 
        norm_median[ivar<=0] = np.nan
-       # Composite
-       median_norm_median = nanmedian(norm_median, axis=1)
-       mean_norm_median = nanmean(norm_median, axis=1)
 
-       # Median
-       y = median_norm_median[mask]
-       z = np.polyfit(x, y, polyorder)
-       p = np.poly1d(z)
-       continuum = p(loglam)
-       median_norm_median = median_norm_median/continuum
+       # Bootstrapping:
+       if bootstrap:
+           median_norm_median = np.zeros((nwave, nbootstrap))
+           mean_norm_median = np.zeros((nwave, nbootstrap))
 
-       # Mean
-       y = mean_norm_median[mask]
-       z = np.polyfit(x, y, polyorder)
-       p = np.poly1d(z)
-       continuum = p(loglam)
-       mean_norm_median = mean_norm_median/continuum
+           # Composite
+           for iboot in np.arange(nbootstrap):
+               index_boot = np.random.randint(0, nobj, size=nobj)
+               median_norm_median_tmp = nanmedian(norm_median[:, index_boot], axis=1)
+               mean_norm_median_tmp = nanmean(norm_median[:, index_boot], axis=1)
+           # Median
+           y = median_norm_median_tmp[mask]
+           z = np.polyfit(x, y, polyorder)
+           p = np.poly1d(z)
+           continuum = p(loglam)
+           median_norm_median[:, iboot] = median_norm_median_tmp/continuum
+
+           # Mean
+           y = mean_norm_median_tmp[mask]
+           z = np.polyfit(x, y, polyorder)
+           p = np.poly1d(z)
+           continuum = p(loglam)
+           mean_norm_median[:, iboot] = mean_norm_median_tmp/continuum
+
+       # Regular
+       else: 
+           # Composite
+           median_norm_median = nanmedian(norm_median, axis=1)
+           mean_norm_median = nanmean(norm_median, axis=1)
+
+           # Median
+           y = median_norm_median[mask]
+           z = np.polyfit(x, y, polyorder)
+           p = np.poly1d(z)
+           continuum = p(loglam)
+           median_norm_median = median_norm_median/continuum
+
+           # Mean
+           y = mean_norm_median[mask]
+           z = np.polyfit(x, y, polyorder)
+           p = np.poly1d(z)
+           continuum = p(loglam)
+           mean_norm_median = mean_norm_median/continuum
 
     return (median_norm_median, mean_norm_median)
 
-def new_composite_engine_bootstrap(wave, flux, ivar, polyorder=2, oii=False, nbootstrap=300):
+def new_composite_engine_bootstrap(wave, flux, ivar, polyorder=2, oii=False, nbootstrap=500):
     """All the composites should be made with this engine.
     - mean doesn't work for noisy data yet
     - mask is given by _contmask
@@ -325,7 +358,7 @@ def new_composite_engine_bootstrap(wave, flux, ivar, polyorder=2, oii=False, nbo
 
        # Composite
        for iboot in np.arange(nbootstrap):
-           index_boot = np.random.randint(0, nwave, size=nobj)
+           index_boot = np.random.randint(0, nobj, size=nobj)
            median_norm_median_tmp = nanmedian(norm_median[:, index_boot], axis=1)
            mean_norm_median_tmp = nanmean(norm_median[:, index_boot], axis=1)
 
@@ -391,7 +424,7 @@ def composite_engine(loglam, flux, ivar, mask, polyorder=2):
 
     return (median_norm_median, mean_norm_median)
 
-def new_feiimgii_composite(zmin=0.6, zmax=1.2, polyorder=3):
+def new_feiimgii_composite(zmin=0.6, zmax=1.2, polyorder=3, bootstrap=False, nbootstrap=_nbootstrap):
 
     # Read in
     objs_ori = elg_readin()
@@ -411,12 +444,12 @@ def new_feiimgii_composite(zmin=0.6, zmax=1.2, polyorder=3):
     tmpflux = rest_allflux[rest_loc[0]:rest_loc[1],zindex]
     tmpivar = rest_allivar[rest_loc[0]:rest_loc[1],zindex]
 
-    (fluxmedian, fluxmean) = new_composite_engine(outwave, tmpflux, tmpivar, polyorder)
-    (oiifluxmedian, oiifluxmean) = new_composite_engine(outwave, tmpflux, tmpivar, polyorder=2, oii=True)
+    (fluxmedian, fluxmean) = new_composite_engine(outwave, tmpflux, tmpivar, polyorder, bootstrap=bootstrap, nbootstrap=nbootstrap)
+    (oiifluxmedian, oiifluxmean) = new_composite_engine(outwave, tmpflux, tmpivar, polyorder=2, oii=True, bootstrap=bootstrap, nbootstrap=nbootstrap)
     
     return (outwave, fluxmedian, fluxmean, oiifluxmedian, oiifluxmean)
 
-def new_feiimgii_composite_bootstrap(zmin=0.6, zmax=1.2, polyorder=3, nbootstrap=300):
+def new_feiimgii_composite_bootstrap(zmin=0.6, zmax=1.2, polyorder=3, nbootstrap=500):
 
     # Read in
     objs_ori = elg_readin()
@@ -442,9 +475,9 @@ def new_feiimgii_composite_bootstrap(zmin=0.6, zmax=1.2, polyorder=3, nbootstrap
     return (outwave, fluxmedian, fluxmean, oiifluxmedian, oiifluxmean)
 
 
-def save_feiimgii_composite(bootstrap=False, nboostrap=300, overwrite=False):
+def save_feiimgii_composite(bootstrap=False, nbootstrap=500, overwrite=False):
     if bootstrap:
-       (outwave, fluxmedian, fluxmean, oiifluxmedian, oiifluxmean) = new_feiimgii_composite_bootstrap(nbootstrap=nbootstrap)
+       (outwave, fluxmedian, fluxmean, oiifluxmedian, oiifluxmean) = new_feiimgii_composite(bootstrap=True, nbootstrap=nbootstrap)
        nwave = outwave.size
        outstr_dtype = [ ('WAVE', 'f4', (nwave, )), 
                         ('FLUXMEDIAN', 'f4', (nwave, nbootstrap)), 
