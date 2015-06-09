@@ -44,6 +44,12 @@ def get_velgrid(dloglam=1.E-4, dvel=None, noffset=100):
        dvel = np.log(10.)*dloglam*constants.c/1E3
     return (np.arange(2*noffset)-noffset)*dvel
 
+def vel2loglam(pivot, invel):
+    """
+    vel = 0 @ pivot wavelength
+    """
+    return np.log10(pivot)+invel*1E3/constants.c/np.log(10.)
+
 def resample_spec(inloglam, influx, inivar, newloglam):
     """
     resample a spectrum/many spectra: convolution then interpolation?

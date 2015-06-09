@@ -24,6 +24,8 @@ _starburstfile = 'catalog.txt'
 _subpath = 'starburst/fos_ghrs_spectra'
 _minmaxwave = [3600., 10400.]
 
+_mgiicompositefile = 'starburst_mgii_composite.fits'
+
 #mgii_index = np.array([12, 18, 19, 20, 25, 27, 28, 32, 33, 34, 35, 36, 37, 44, 45])
 #_mgii_index = np.array([12, 18, 19, 20, 25, 28, 32, 34, 35, 45])
 _mgii_index = np.array([12, 18, 19, 20, 25, 28, 32, 34, 35])
@@ -42,6 +44,14 @@ def starburst_readin():
        return np.genfromtxt(infile, dtype=[('gal', 'S15')])
     else:
        raise IOError("Can't find file {0}.".format(infile))
+
+def mgii_composite_filename():
+    path = datapath.hstfos_path()
+    return join(path, _subpath, _mgiicompositefile)
+
+def mgii_composite_readin():
+    infile = mgii_composite_filename()
+    return (fitsio.read(infile))[0]
 
 def allinone_rest_filename(band):
     return aio.allinone_filename(band, prefix=_allinone_rest_fileprefix)
@@ -250,5 +260,26 @@ def mgii_composite():
 
     return (outwave, fluxmean, fluxmedian, fluxused)
 
+def save_mgii_composite(overwrite=False):
+    """
+    """
+    outfile = mgii_composite_filename()
+    if isfile(outfile) and not overwrite:
+        print "File {0} exists. Set overwrite=True to overwrite it.".format(outfile)
+        return -1
 
+    (outwave, fluxmean, fluxmedian, fluxused) = mgii_composite()
+    nwave = outwave.size
+    outstr_dtype = [('WAVE', 'f4', outwave.shape),
+                    ('FLUXMEDIAN', 'f4', fluxmedian.shape),
+                    ('FLUXMEAN', 'f4', fluxmean.shape),
+                    ('FLUXUSED', 'f4', fluxused.shape)]
+
+    outstr  = np.array([(outwave, fluxmedian, fluxmean, fluxused)],
+                         dtype=outstr_dtype)
+
+    print "Write into file: {0}.".format(outfile)
+    fits = fitsio.FITS(outfile, 'rw', clobber=overwrite)
+    fits.write(outstr)
+    fits.close()
 
