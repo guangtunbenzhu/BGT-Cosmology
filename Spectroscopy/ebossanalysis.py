@@ -68,6 +68,22 @@ def velspace_flux_filename(bootstrap=False, binoii=False):
         else:
             return join(path, 'eBOSS/lines', 'OII_'+_velspace_flux_file)
 
+def oiii_velspace_flux_filename(bootstrap=False, binoii=False):
+    """
+    """
+    path = datapath.sdss_path()
+    if bootstrap:
+        if (not binoii):
+            return join(path, 'eBOSS/lines', 'OIII_'+_bootstrap_velspace_flux_file)
+        else:
+            return join(path, 'eBOSS/lines', 'OII_'+'OIII_'+_bootstrap_velspace_flux_file)
+    else:
+        if (not binoii):
+            return join(path, 'eBOSS/lines', 'OIII_'+_velspace_flux_file)
+        else:
+            return join(path, 'eBOSS/lines', 'OII_'+'OIII_'+_velspace_flux_file)
+
+
 def corrected_velspace_flux_filename(bootstrap=False, binoii=False):
     """
     """
@@ -228,6 +244,85 @@ def flux_wave2velspace(inloglam, influx, inivar, pivot):
     outvel = specutils.get_velgrid(noffset=_noffset)
 
     return (outvel, outflux)
+
+def oiii_do_velspace_flux(overwrite=False, bootstrap=False, binoii=False):
+    """
+    """
+    outfile = oiii_velspace_flux_filename()
+    if (isfile(outfile) and (not overwrite)):
+        print "File {0} exists. Use overwrite to overwrite it.".format(outfile)
+        return -1
+
+    # input data, might need to be moved out of the function
+    data = ebossspec.feiimgii_composite_readin(bootstrap=bootstrap, binoii=binoii)
+    inloglam = np.log10(data['WAVE'])
+    if (not binoii):
+        influx = data['OIII_FLUXMEDIAN']
+        inivar = np.ones(influx.shape)
+        outstr = oiii_velspace_flux(inloglam, influx, inivar)
+    else:
+        ewinflux = data['EWOIII_FLUXMEDIAN']
+        luminflux = data['LUMOIII_FLUXMEDIAN']
+        nbin = data['OIIEWMIN'].size
+        for i in np.arange(nbin):
+            if (not bootstrap):
+                tmp_ewinflux = ewinflux[:,i]
+                tmp_luminflux = luminflux[:,i]
+            else:
+                tmp_ewinflux = ewinflux[:,:,i]
+                tmp_luminflux = luminflux[:,:,i]
+            inivar = np.ones(tmp_ewinflux.shape)
+            tmp_ewoutstr = oiii_velspace_flux(inloglam, tmp_ewinflux, inivar)
+            tmp_lumoutstr = oiii_velspace_flux(inloglam, tmp_luminflux, inivar)
+            if (i == 0):
+                ewoutstr = np.zeros(nbin, dtype=tmp_ewoutstr.dtype)
+                lumoutstr = np.zeros(nbin, dtype=tmp_lumoutstr.dtype)
+            ewoutstr[i] = tmp_ewoutstr
+            lumoutstr[i] = tmp_lumoutstr
+
+    # Save the data into files
+    print "Write into file: {0}".format(outfile)
+
+    fits = fitsio.FITS(outfile, 'rw', clobber=overwrite)
+    if (not binoii):
+        fits.write(outstr)
+    else:
+        fits.write(ewoutstr)
+        fits.write(lumoutstr)
+    fits.close()
+
+    return True
+
+def oiii_velspace_flux(inloglam, influx, inivar):
+    """
+    \pm 2000 km/s
+    """
+
+    # 4 Lines WITHOUT non-resonant channels
+    linewave_all = np.array([speclines.OIII5008.wave, speclines.OIII4960.wave])
+
+    # To velocity space centered on the rest-frame wavelength of the lines
+    outvel, outflux = flux_wave2velspace(inloglam, influx, inivar, 
+                               linewave_all)
+
+    # Some necessary quality control
+    outflux[outflux<0] = 0.
+    out_dtype = [('LINES', 'f8', linewave_all.shape),
+                 ('VEL', 'f8', outvel.shape), 
+                 ('FLUX', 'f8', outflux.shape)]
+    outstr = np.array([(linewave_all, outvel, outflux)], dtype=out_dtype)
+
+    return outstr
+
+def oiii_velspace_flux_readin(bootstrap=False, binoii=False):
+    """
+    """
+    infile = oiii_velspace_flux_filename(bootstrap=bootstrap, binoii=binoii)
+    if (not binoii):
+        return (fitsio.read(infile))[0]
+    else:
+        return (fitsio.read(infile, 1), fitsio.read(infile, 2)) 
+
 
 def vel2wavespace(pivot, invel, influx, inivar, outloglam):
     """
@@ -973,7 +1068,7 @@ def starburst_measure(overwrite=False):
     fits.write(outstr)
     fits.close()
 
-def starburst_measure_readin(rew=False):
+def starburst_measure_readin():
     infile0 = starburstspec.mgii_composite_filename()
     infile = infile0.replace('.fits', '_REW.fits')
     return (fitsio.read(infile))[0]
