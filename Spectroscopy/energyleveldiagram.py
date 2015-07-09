@@ -84,6 +84,10 @@ def plot_energylevel_diagram(low_state, high_state, title, absorption=None, emis
 
            head_width=0.008
            head_length=0.015
+           #ax.plot([xpos_emission, xpos_emission], [ypos_high_level, ypos_low_level+head_length+0.004+0.018], 
+           #         color='green', lw=2, linestyle='--')
+           #ax.arrow(xpos_emission, ypos_low_level+head_length+0.004+0.018, 0., -0.018, 
+           #         head_width=head_width, head_length=head_length, color='green')
            ax.arrow(xpos_emission, ypos_high_level, 0., -(ypos_high_level-ypos_low_level-head_length-0.004), 
                     head_width=head_width, head_length=head_length, color='green')
            ax.text(xpos_emission-0.038, ypos_text, transition_text,
@@ -122,8 +126,8 @@ def plot_energylevel_diagram(low_state, high_state, title, absorption=None, emis
            head_length=0.007
            ax.arrow(xpos_finestructure, ypos_high_level, 0., -(ypos_high_level-ypos_low_level-head_length-0.004), lw=1, 
                     head_width=head_width, head_length=head_length, color='brown')
-           ax.arrow(xpos_finestructure, ypos_low_level, 0., ypos_high_level-ypos_low_level-head_length-0.000, lw=1, 
-                    head_width=head_width, head_length=head_length, color='brown')
+           #ax.arrow(xpos_finestructure, ypos_low_level, 0., ypos_high_level-ypos_low_level-head_length-0.000, lw=1, 
+           #         head_width=head_width, head_length=head_length, color='brown')
            ax.text(xpos_finestructure+0.010, ypos_text_finestructure, transition_text,
                    fontsize=fontsize_finestructure, ha='left')
 
@@ -143,9 +147,9 @@ _FeII_ground_finestructure[1] = (_xfine, '7/2', '5/2', r'35.35$\mu{\rm m}$')
 _FeII_ground_finestructure[2] = (_xfine, '5/2', '3/2', r'51.30$\mu{\rm m}$')
 _FeII_ground_finestructure[3] = (_xfine, '3/2', '1/2', r'87.38$\mu{\rm m}$')
 _FeII_excited_state_1 = {'NJ':5, 'CONFIG':r'3d$^6$4p', 'TERM':r'z  $^6\!{\rm D}^{\rm o}\!$', 'J':np.array(['9/2', '7/2', '5/2', '3/2', '1/2']), 'ENERGY':np.array(['38458.99', '38660.05', '38858.97', '39013.22', '39109.32'])}
-_FeII_excited_state_2 = {'NJ':6, 'CONFIG':r'3d$^6$4p', 'TERM':r'z  $^6\!{\rm F}^{\rm o}\!$', 'J':np.array(['11/2', '9/2', '7/2', '5/2', '3/2', '1/2']), 'ENERGY':np.array(['41968.07', '42114.82', '42237.06', '42334.84', '42401.32', '42439.85'])}
+_FeII_excited_state_2 = {'NJ':6, 'CONFIG':r'3d$^6$4p', 'TERM':r'z  $^6\!{\rm F}^{\rm o}\!$', 'J':np.array(['11/2', '9/2', '7/2', '5/2', '3/2', '1/2']), 'ENERGY':np.array(['41968.07', '42114.84', '42237.06', '42334.84', '42401.32', '42439.85'])}
 _FeII_excited_state_3 = {'NJ':3, 'CONFIG':r'3d$^6$4p', 'TERM':r'z  $^6\!{\rm P}^{\rm o}\!$', 'J':np.array(['7/2', '5/2', '3/2']), 'ENERGY':np.array(['42658.24', '43238.61', '43620.98'])}
-_FeII_excited_state_4 = {'NJ':4, 'CONFIG':r'3d$^6$4p', 'TERM':r'z  $^4\!{\rm F}^{\rm o}\!$', 'J':np.array(['9/2', '7/2', '5/2', '3/2']), 'ENERGY':np.array(['44232.54', '44753.81', '45079.90', '45289.82'])}
+_FeII_excited_state_4 = {'NJ':4, 'CONFIG':r'3d$^6$4p', 'TERM':r'z  $^4\!{\rm F}^{\rm o}\!$', 'J':np.array(['9/2', '7/2', '5/2', '3/2']), 'ENERGY':np.array(['44232.54', '44753.82', '45079.90', '45289.82'])}
 _FeII_excited_state_5 = {'NJ':4, 'CONFIG':r'3d$^6$4p', 'TERM':r'z  $^4\!{\rm D}^{\rm o}\!$', 'J':np.array(['7/2', '5/2', '3/2', '1/2']), 'ENERGY':np.array(['44446.91', '44784.79', '45044.19', '45206.47'])}
 _FeII_excited_state_6 = {'NJ':3, 'CONFIG':r'3d$^6$4p', 'TERM':r'z  $^4\!{\rm P}^{\rm o}\!$', 'J':np.array(['5/2', '3/2', '1/2']), 'ENERGY':np.array(['46967.48', '47389.81', '47626.11'])}
 
@@ -167,7 +171,7 @@ def plot_feiiuv1():
     emission[1] = (0.20+xoff+0.07, '7/2', '9/2', '*2626.45   3.52E7   4.55E-2')
     emission[2] = (0.20+xoff+0.07+xoff1, '9/2', '7/2', '2586.65   8.94E7   7.17E-2')
     emission[3] = (0.20+xoff+0.07+xoff1+0.07, '7/2', '7/2', '*2612.65   1.20E8   1.22E-1')
-    emission[4] = (0.20+xoff+0.07+xoff1+0.07+0.07, '5/2', '7/2', '*2632.11   6.29E7   8.87E-2')
+    emission[4] = (0.20+xoff+0.07+xoff1+0.07+0.07, '5/2', '7/2', '*2632.11   6.29E7   8.70E-2')
     # absorption
     nabs = 2
     absorption = np.zeros(nabs, dtype=_transition_dtype)
@@ -194,7 +198,7 @@ def plot_feiiuv2():
     emission = np.zeros(nemiss, dtype=_transition_dtype)
     emission[0] = (0.20+xoff, '9/2', '11/2', '2382.76   3.13E8   3.20E-1')
     emission[1] = (0.20+xoff+0.07+xoff1, '9/2', '9/2', '2374.46   4.25E7   3.59E-2')
-    emission[2] = (0.20+xoff+0.07+xoff1+0.07, '7/2', '9/2', '*2396.36   2.59E8   2.79E-1')
+    emission[2] = (0.20+xoff+0.07+xoff1+0.07, '7/2', '9/2', '*2396.35   2.59E8   2.79E-1')
     # absorption
     nabs = 2
     absorption = np.zeros(nabs, dtype=_transition_dtype)
@@ -213,23 +217,23 @@ def plot_feiiuv3():
     low_state = _FeII_ground_state
     high_state = _FeII_excited_state_3
 
-    xoff = 0.08
-    xoff1 = 0.15
+    xoff = 0.20
+    xoff1 = 0.17
 
     # emission
-    nemiss = 6
+    nemiss = 3
     emission = np.zeros(nemiss, dtype=_transition_dtype)
     emission[0] = (0.20+xoff, '9/2', '7/2', '2344.21   1.73E8   1.14E-1')
-    emission[1] = (0.20+xoff+0.06, '7/2', '7/2', '*2365.55   5.90E7   4.95E-2')
-    emission[2] = (0.20+xoff+0.06*2, '5/2', '7/2', '*2381.49   3.10E7   3.51E-2')
-    emission[3] = (0.20+xoff+0.06*2+xoff1, '7/2', '5/2', '*2333.51   1.31E8   8.00E-2')
-    emission[4] = (0.20+xoff+0.06*2+xoff1+0.06, '5/2', '5/2', '*2349.02   1.15E8   9.50E-2')
-    emission[5] = (0.20+xoff+0.06*2+xoff1+0.06*2, '3/2', '5/2', '*2359.83   5.00E7   6.30E-2')
+    emission[1] = (0.20+xoff+0.07, '7/2', '7/2', '*2365.55   5.90E7   4.95E-2')
+    emission[2] = (0.20+xoff+0.07*2, '5/2', '7/2', '*2381.49   3.10E7   3.51E-2')
+    #emission[3] = (0.20+xoff+0.06*2+xoff1, '7/2', '5/2', '*2333.51   1.31E8   8.00E-2')
+    #emission[4] = (0.20+xoff+0.06*2+xoff1+0.06, '5/2', '5/2', '*2349.02   1.15E8   9.50E-2')
+    #emission[5] = (0.20+xoff+0.06*2+xoff1+0.06*2, '3/2', '5/2', '*2359.83   5.00E7   6.30E-2')
     # absorption
-    nabs = 2
+    nabs = 1
     absorption = np.zeros(nabs, dtype=_transition_dtype)
     absorption[0] = (0.20+xoff-0.008, '9/2', '7/2', '2344.21   1.73E8   1.14E-1')
-    absorption[1] = (0.20+xoff+0.06*2+xoff1-0.008, '7/2', '5/2', '*2333.51   1.31E8   8.00E-2')
+    #absorption[1] = (0.20+xoff+0.06*2+xoff1-0.008, '7/2', '5/2', '*2333.51   1.31E8   8.00E-2')
     # fine structure
     finestructure = _FeII_ground_finestructure
 
@@ -243,23 +247,23 @@ def plot_feiiuv4():
     low_state = _FeII_ground_state
     high_state = _FeII_excited_state_4
 
-    xoff = 0.08
+    xoff = 0.20
     xoff1 = 0.17
 
     # emission
-    nemiss = 5
+    nemiss = 2
     emission = np.zeros(nemiss, dtype=_transition_dtype)
     emission[0] = (0.20+xoff, '9/2', '9/2', '2260.78   3.18E6   2.44E-3')
     emission[1] = (0.20+xoff+0.07, '7/2', '9/2', '*2280.62   4.49E6   4.38E-3')
-    emission[2] = (0.20+xoff+0.07+xoff1, '9/2', '7/2', '2234.45   0.00E0   0.00E-0')
-    emission[3] = (0.20+xoff+0.07+xoff1+0.07, '7/2', '7/2', '*2253.82   4.40E6   3.40E-3')
-    emission[4] = (0.20+xoff+0.07+xoff1+0.07+0.07, '5/2', '7/2', '*2268.29   3.69E6   3.80E-3')
+    #emission[2] = (0.20+xoff+0.07+xoff1, '9/2', '7/2', '2234.45   0.00E0   0.00E-0')
+    #emission[3] = (0.20+xoff+0.07+xoff1+0.07, '7/2', '7/2', '*2253.82   4.40E6   3.40E-3')
+    #emission[4] = (0.20+xoff+0.07+xoff1+0.07+0.07, '5/2', '7/2', '*2268.29   3.69E6   3.80E-3')
 
     # absorption
-    nabs = 2
+    nabs = 1
     absorption = np.zeros(nabs, dtype=_transition_dtype)
     absorption[0] = (0.20+xoff-0.008, '9/2', '9/2', '2260.78   3.18E6   2.44E-3')
-    absorption[1] = (0.20+xoff+0.07+xoff1-0.008, '9/2', '7/2', '2234.45   0.00E0   7.17E-2')
+    #absorption[1] = (0.20+xoff+0.07+xoff1-0.008, '9/2', '7/2', '2234.45   0.00E0   7.17E-2')
     # fine structure
     finestructure = _FeII_ground_finestructure
 
@@ -273,21 +277,21 @@ def plot_feiiuv5():
     low_state = _FeII_ground_state
     high_state = _FeII_excited_state_5
 
-    xoff = 0.08
+    xoff = 0.24
     xoff1 = 0.17
 
     # emission
-    nemiss = 4
+    nemiss = 2
     emission = np.zeros(nemiss, dtype=_transition_dtype)
-    emission[0] = (0.20+xoff, '9/2', '7/2', '2249.87   3.00E6   1.82E-3')
+    emission[0] = (0.20+xoff, '9/2', '7/2', '2249.88   3.00E6   1.82E-3')
     emission[1] = (0.20+xoff+0.07, '7/2', '7/2', '*2269.52   4.00E5   3.10E-4')
-    emission[2] = (0.20+xoff+0.07+xoff1, '7/2', '5/2', '*2252.52   1.00E6   6.00E-4')
-    emission[3] = (0.20+xoff+0.07+xoff1+0.07, '5/2', '5/2', '*2266.70   1.00E6   8.00E-4')
+    #emission[2] = (0.20+xoff+0.07+xoff1, '7/2', '5/2', '*2252.52   1.00E6   6.00E-4')
+    #emission[3] = (0.20+xoff+0.07+xoff1+0.07, '5/2', '5/2', '*2266.70   1.00E6   8.00E-4')
     # absorption
-    nabs = 2
+    nabs = 1
     absorption = np.zeros(nabs, dtype=_transition_dtype)
     absorption[0] = (0.20+xoff-0.008, '9/2', '7/2', '2249.87   3.00E6   1.82E-3')
-    absorption[1] = (0.20+xoff+0.07+xoff1-0.008, '7/2', '5/2', '*2252.52   1.00E6   6.00E-4')
+    #absorption[1] = (0.20+xoff+0.07+xoff1-0.008, '7/2', '5/2', '*2252.52   1.00E6   6.00E-4')
     # fine structure
     finestructure = _FeII_ground_finestructure
 
@@ -312,14 +316,14 @@ def plot_mgiiuv1():
     # emission
     nemiss = 2
     emission = np.zeros(nemiss, dtype=_transition_dtype)
-    emission[0] = (0.20+xoff, '1/2', '1/2', '2796.35   2.60E8   6.08E-1')
-    emission[1] = (0.20+xoff+0.07+xoff1, '1/2', '3/2', '2803.53   2.57E8   3.03E-1')
+    emission[0] = (0.20+xoff, '1/2', '1/2', '2803.53   2.57E8   3.03E-1')
+    emission[1] = (0.20+xoff+0.07+xoff1, '1/2', '3/2', '2796.35   2.60E8   6.08E-1')
 
     # absorption
     nabs = 2
     absorption = np.zeros(nabs, dtype=_transition_dtype)
-    absorption[0] = (0.20+xoff-0.008, '1/2', '1/2', '2796.35   2.60E8   6.08E-1')
-    absorption[1] = (0.20+xoff+0.07+xoff1-0.008, '1/2', '3/2', '2803.53   2.57E8   3.03E-1')
+    absorption[0] = (0.20+xoff-0.008, '1/2', '1/2', '2803.53   2.57E8   3.03E-1')
+    absorption[1] = (0.20+xoff+0.07+xoff1-0.008, '1/2', '3/2', '2796.35   2.60E8   6.08E-1')
     # fine structure
 
     plot_energylevel_diagram(low_state, high_state, title, emission=emission, absorption=absorption, finestructure=None, figfile=figfile)
@@ -345,12 +349,12 @@ def plot_mgiuv1():
     # emission
     nemiss = 1
     emission = np.zeros(nemiss, dtype=_transition_dtype)
-    emission[0] = (0.20+xoff, '0', '1', '2852.58   2.60E8   6.08E-1')
+    emission[0] = (0.20+xoff, '0', '1', '2852.96   4.91E8   1.80E-0')
 
     # absorption
     nabs = 1
     absorption = np.zeros(nabs, dtype=_transition_dtype)
-    absorption[0] = (0.20+xoff-0.008, '0', '1', '2852.58   2.60E8   6.08E-1')
+    absorption[0] = (0.20+xoff-0.008, '0', '1', '2852.96   4.91E8   1.80E-0')
     # fine structure
 
     plot_energylevel_diagram(low_state, high_state, title, emission=emission, absorption=absorption, finestructure=None, figfile=figfile)
@@ -406,16 +410,16 @@ def plot_mniiuv1():
     # emission
     nemiss = 3
     emission = np.zeros(nemiss, dtype=_transition_dtype)
-    emission[0] = (0.20+xoff, '3', '2', '2576.88   2.80E8   3.58E-1')
+    emission[0] = (0.20+xoff, '3', '2', '2606.46   2.69E8   1.96E-1')
     emission[1] = (0.20+xoff*2, '3', '3', '2594.50   2.76E8   2.79E-1')
-    emission[2] = (0.20+xoff*3, '3', '4', '2606.46   2.69E8   1.96E-1')
+    emission[2] = (0.20+xoff*3, '3', '4', '2576.88   2.80E8   3.58E-1')
 
     # absorption
     nabs = 3
     absorption = np.zeros(nabs, dtype=_transition_dtype)
-    absorption[0] = (0.20+xoff-0.008, '3', '2', '2576.88   2.80E8   3.58E-1')
+    absorption[0] = (0.20+xoff-0.008, '3', '2', '2606.46   2.69E8   1.96E-1')
     absorption[1] = (0.20+xoff*2-0.008, '3', '3', '2594.50   2.76E8   2.79E-1')
-    absorption[2] = (0.20+xoff*3-0.008, '3', '4', '2606.46   2.69E8   1.96E-1')
+    absorption[2] = (0.20+xoff*3-0.008, '3', '4', '2576.88   2.80E8   3.58E-1')
     # fine structure
 
     plot_energylevel_diagram(low_state, high_state, title, emission=emission, absorption=absorption, finestructure=None, figfile=figfile)
@@ -430,7 +434,7 @@ _CII_excited_state_1 = {'NJ':3, 'CONFIG':r'2s2p$^2$', 'TERM':r'   $^4\!{\rm P}$'
 
 def plot_ciiuv1():
     figfile = join(datapath.atomic_path(),'EnergyDiagram','CII_UV1.eps')
-    title = 'C II UV1'
+    title = 'C II UV0.01'
 
     #Low and high state
     low_state = _CII_ground_state
@@ -444,9 +448,9 @@ def plot_ciiuv1():
     emission = np.zeros(nemiss, dtype=_transition_dtype)
     emission[0] = (0.20+xoff, '1/2', '1/2', '2325.40   5.99E1   4.86E-8')
     emission[1] = (0.20+xoff+0.07, '1/2', '3/2', '2324.21   1.40E0   2.27E-9')
-    emission[2] = (0.20+xoff+0.07+xoff1, '3/2', '1/2', '*2328.83   6.78E1   2.76E-8')
-    emission[3] = (0.20+xoff+0.07+xoff1+0.07, '3/2', '3/2', '*2327.64   8.49E0   6.90E-9')
-    emission[4] = (0.20+xoff+0.07+xoff1+0.07+0.07, '3/2', '5/2', '*2326.11   4.43E1   5.40E-8')
+    emission[2] = (0.20+xoff+0.07+xoff1, '3/2', '1/2', '2328.83   6.78E1   2.76E-8')
+    emission[3] = (0.20+xoff+0.07+xoff1+0.07, '3/2', '3/2', '2327.64   8.49E0   6.90E-9')
+    emission[4] = (0.20+xoff+0.07+xoff1+0.07+0.07, '3/2', '5/2', '2326.11   4.43E1   5.40E-8')
     # absorption
     #nabs = 2
     #absorption = np.zeros(nabs, dtype=_transition_dtype)
@@ -466,7 +470,7 @@ _TiII_ground_finestructure[0] = (_xfine, '3/2', '5/2', r'106.2\mu{\rm m}$')
 _TiII_ground_finestructure[1] = (_xfine, '5/2', '7/2', r'75.99$\mu{\rm m}$')
 _TiII_ground_finestructure[2] = (_xfine, '7/2', '9/2', r'59.62$\mu{\rm m}$')
 
-_TiII_excited_state_1 = {'NJ':4, 'CONFIG':r'3d$^2$4p', 'TERM':r'z  $^4\!{\rm G}^{\rm o}\!$', 'J':np.array(['5/2', '7/2', '9/2', '11/2']), 'ENERGY':np.array(['29544.4', '292734.6', '29968.3', '30240.9'])}
+_TiII_excited_state_1 = {'NJ':4, 'CONFIG':r'3d$^2$4p', 'TERM':r'z  $^4\!{\rm G}^{\rm o}\!$', 'J':np.array(['5/2', '7/2', '9/2', '11/2']), 'ENERGY':np.array(['29544.4', '29734.6', '29968.3', '30240.9'])}
 _TiII_excited_state_2 = {'NJ':4, 'CONFIG':r'3d$^2$4p', 'TERM':r'z  $^4\!{\rm F}^{\rm o}\!$', 'J':np.array(['3/2', '5/2', '7/2', '9/2']), 'ENERGY':np.array(['30836.4', '30958.6', '31113.7', '31301.1'])}
 _TiII_excited_state_5 = {'NJ':4, 'CONFIG':r'3d$^2$4p', 'TERM':r'z  $^4\!{\rm D}^{\rm o}\!$', 'J':np.array(['1/2', '3/2', '5/2', '7/2']), 'ENERGY':np.array(['32532.4', '32602.6', '32698.1', '32767.2'])}
 
@@ -544,7 +548,7 @@ def plot_tiiino5():
     nemiss = 3
     emission = np.zeros(nemiss, dtype=_transition_dtype)
     emission[0] = (0.20+xoff, '3/2', '1/2', '3073.86   1.71E8    1.21E-1')
-    emission[1] = (0.20+xoff+0.08, '3/2', '3/2', '3067.23   3.47E7     4.89E-2')
+    emission[1] = (0.20+xoff+0.08, '3/2', '3/2', '3067.24   3.47E7     4.89E-2')
     emission[2] = (0.20+xoff+0.08*2, '3/2', '5/2', '3058.28   1.98E6    4.16E-3')
     #emission[2] = (0.20+xoff+0.07+xoff1, '3/2', '1/2', '*2328.83   6.78E1   2.76E-8')
     #emission[3] = (0.20+xoff+0.07+xoff1+0.07, '3/2', '3/2', '*2327.64   8.49E0   6.90E-9')

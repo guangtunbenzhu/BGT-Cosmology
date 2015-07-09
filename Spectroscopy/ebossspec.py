@@ -366,11 +366,41 @@ def value_add_elg(overwrite=False):
     oiiew = (oiisum-oii_cont*dwave)/oii_cont
     oiilum = (oiisum-oii_cont*dwave)*np.power(cosmo.luminosity_distance(z), 2)*4.*np.pi*np.power(Mpc_cm,2)*1E-17
 
+    index_oiii  = np.searchsorted(master_wave, 5008.24)
+    dnoiiiwave = 10
+    dwave = np.median(master_wave[index_oiii-dnoiiiwave:index_oiii+dnoiiiwave]-master_wave[index_oiii-dnoiiiwave-1:index_oiii+dnoiiiwave-1])
+    print "dwave: {0}".format(dwave)
+    oiiisum = np.sum(rest_allflux[index_oiii-dnoiiiwave:index_oiii+dnoiiiwave, :]*(rest_allivar[index_oiii-dnoiiiwave:index_oiii+dnoiiiwave, :]>0), axis=0)*dwave 
+    print "allfinite: {0}".format(np.count_nonzero(np.isfinite(oiiisum)))
+    oiii_left = np.sum(rest_allflux[index_oiii-25:index_oiii-15, :]*(rest_allivar[index_oiii-25:index_oiii-15, :]>0), axis=0)/(25.-15.)
+    oiii_right = np.sum(rest_allflux[index_oiii+15:index_oiii+25, :]*(rest_allivar[index_oiii+15:index_oiii+25, :]>0), axis=0)/(25.-15.)
+    oiii_cont = (oiii_left+oiii_right)/2.
+    oiiiew = (oiiisum-oiii_cont*dwave)/oiii_cont
+    oiiilum = (oiiisum-oiii_cont*dwave)*np.power(cosmo.luminosity_distance(z), 2)*4.*np.pi*np.power(Mpc_cm,2)*1E-17
+
+    index_hbeta  = np.searchsorted(master_wave, 4862.64)
+    dnhbetawave = 10
+    dwave = np.median(master_wave[index_hbeta-dnhbetawave:index_hbeta+dnhbetawave]-master_wave[index_hbeta-dnhbetawave-1:index_hbeta+dnhbetawave-1])
+    print "dwave: {0}".format(dwave)
+    hbetasum = np.sum(rest_allflux[index_hbeta-dnhbetawave:index_hbeta+dnhbetawave, :]*(rest_allivar[index_hbeta-dnhbetawave:index_hbeta+dnhbetawave, :]>0), axis=0)*dwave 
+    print "allfinite: {0}".format(np.count_nonzero(np.isfinite(hbetasum)))
+    hbeta_left = np.sum(rest_allflux[index_hbeta-25:index_hbeta-15, :]*(rest_allivar[index_hbeta-25:index_hbeta-15, :]>0), axis=0)/(25.-15.)
+    hbeta_right = np.sum(rest_allflux[index_hbeta+15:index_hbeta+25, :]*(rest_allivar[index_hbeta+15:index_hbeta+25, :]>0), axis=0)/(25.-15.)
+    hbeta_cont = (hbeta_left+hbeta_right)/2.
+    hbetaew = (hbetasum-hbeta_cont*dwave)/hbeta_cont
+    hbetalum = (hbetasum-hbeta_cont*dwave)*np.power(cosmo.luminosity_distance(z), 2)*4.*np.pi*np.power(Mpc_cm,2)*1E-17
+
+
     outstr_dtype = [('Z', 'f4', z.shape), 
                     ('OIILUM', 'f8', oiilum.shape), 
-                    ('OIIEW', 'f8', oiiew.shape)]
+                    ('OIIEW', 'f8', oiiew.shape),
+                    ('OIIILUM', 'f8', oiiilum.shape), 
+                    ('OIIIEW', 'f8', oiiiew.shape),
+                    ('HBETALUM', 'f8', hbetalum.shape), 
+                    ('HBETAEW', 'f8', hbetaew.shape),
+                    ]
 
-    outstr  = np.array([(z, oiilum, oiiew)],
+    outstr  = np.array([(z, oiilum, oiiew, oiiilum, oiiiew, hbetalum, hbetaew)],
                          dtype=outstr_dtype)
 
     print "Write into file: {0}.".format(outfile)
