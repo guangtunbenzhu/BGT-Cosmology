@@ -53,6 +53,12 @@ def mgii_composite_readin():
     infile = mgii_composite_filename()
     return (fitsio.read(infile))[0]
 
+def mgii_composite_jackknife_readin():
+    infile = mgii_composite_filename()
+    infile = infile.replace('.fits', '_jackknife.fits')
+    return (fitsio.read(infile))[0]
+
+
 def allinone_rest_filename(band):
     return aio.allinone_filename(band, prefix=_allinone_rest_fileprefix)
 
@@ -269,6 +275,89 @@ def save_mgii_composite(overwrite=False):
         return -1
 
     (outwave, fluxmean, fluxmedian, fluxused) = mgii_composite()
+    nwave = outwave.size
+    outstr_dtype = [('WAVE', 'f4', outwave.shape),
+                    ('FLUXMEDIAN', 'f4', fluxmedian.shape),
+                    ('FLUXMEAN', 'f4', fluxmean.shape),
+                    ('FLUXUSED', 'f4', fluxused.shape)]
+
+    outstr  = np.array([(outwave, fluxmedian, fluxmean, fluxused)],
+                         dtype=outstr_dtype)
+
+    print "Write into file: {0}.".format(outfile)
+    fits = fitsio.FITS(outfile, 'rw', clobber=overwrite)
+    fits.write(outstr)
+    fits.close()
+
+def mgii_composite_jackknife():
+    (master_wave, rest_allflux, rest_allivar) = rest_allspec_readin()
+    master_loglam = np.log10(master_wave)
+    # mask out useless wavelength ranges
+    # left 2300
+    wave_pos = np.array([2200.])
+    rest_loc = np.searchsorted(master_wave, wave_pos)
+    rest_allivar[0:rest_loc[0],:] = 0.
+    # Fe II 2350
+    wave_pos = np.array([2330., 2420])
+    rest_loc = np.searchsorted(master_wave, wave_pos)
+    rest_allivar[rest_loc[0]:rest_loc[1],:] = 0.
+    # Fe II 2600
+    wave_pos = np.array([2570., 2640])
+    rest_loc = np.searchsorted(master_wave, wave_pos)
+    rest_allivar[rest_loc[0]:rest_loc[1],:] = 0.
+    # Mg II 2800
+    wave_pos = np.array([2770., 2820])
+    rest_loc = np.searchsorted(master_wave, wave_pos)
+    rest_allivar[rest_loc[0]:rest_loc[1],:] = 0.
+    # Mg I 2853
+    wave_pos = np.array([2843., 2863])
+    rest_loc = np.searchsorted(master_wave, wave_pos)
+    rest_allivar[rest_loc[0]:rest_loc[1],:] = 0.
+    # right 2900
+    wave_pos = np.array([2900.])
+    rest_loc = np.searchsorted(master_wave, wave_pos)
+    rest_allivar[rest_loc[0]:,:] = 0.
+
+    normalized_rest_allflux = rest_allflux
+    for i in np.arange((rest_allflux.shape)[1]):
+        imask = (np.where(rest_allivar[:,i]>0.))[0]
+        if imask.size>0: 
+           x = np.log10(master_wave[imask])
+           y = rest_allflux[imask, i]
+           z = np.polyfit(x, y, 3)
+           p = np.poly1d(z)
+           continuum = p(master_loglam)
+           normalized_rest_allflux[:,i] = rest_allflux[:,i]/continuum
+    
+    wave_pos = np.array([2200., 2900.])
+    rest_loc = np.searchsorted(master_wave, wave_pos)
+
+    outwave = master_wave[rest_loc[0]:rest_loc[1]]
+    #tmp_fluxmean = nanmean(normalized_rest_allflux[rest_loc[0]:rest_loc[1], _mgii_index], 1)
+    #tmp_fluxmedian = nanmedian(normalized_rest_allflux[rest_loc[0]:rest_loc[1], _mgii_index], 1)
+    fluxused = normalized_rest_allflux[rest_loc[0]:rest_loc[1], _mgii_index]
+    njack = len(_mgii_index)
+    nwave = outwave.size
+    fluxmean = np.zeros((nwave, njack))
+    fluxmedian = np.zeros((nwave, njack))
+    for ijack in np.arange(njack):
+        fluxmean[:,ijack] = nanmean(normalized_rest_allflux[rest_loc[0]:rest_loc[1], np.r_[_mgii_index[:ijack], _mgii_index[ijack+1:]]], 1)
+        fluxmedian[:,ijack] = nanmedian(normalized_rest_allflux[rest_loc[0]:rest_loc[1], np.r_[_mgii_index[:ijack], _mgii_index[ijack+1:]]], 1)
+    #tmp_fluxmedian = nanmedian(normalized_rest_allflux[rest_loc[0]:rest_loc[1], _mgii_index], 1)
+
+    return (outwave, fluxmean, fluxmedian, fluxused)
+
+
+def save_mgii_composite_jackknife(overwrite=False):
+    """
+    """
+    outfile = mgii_composite_filename()
+    outfile = outfile.replace('.fits', '_jackknife.fits')
+    if isfile(outfile) and not overwrite:
+        print "File {0} exists. Set overwrite=True to overwrite it.".format(outfile)
+        return -1
+
+    (outwave, fluxmean, fluxmedian, fluxused) = mgii_composite_jackknife()
     nwave = outwave.size
     outstr_dtype = [('WAVE', 'f4', outwave.shape),
                     ('FLUXMEDIAN', 'f4', fluxmedian.shape),

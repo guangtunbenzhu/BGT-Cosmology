@@ -53,6 +53,12 @@ _vel_npix_right = 5+1
 _percentlist = np.linspace(0.1, 0.9, 17)
 
 
+def qsostack_absorber_filename(rew=False, mgiirewmin=2.0, mgiirewmax=8.0):
+    path = datapath.absorber_path()
+    filename = 'Absorbers_Composite_Allabs_{0:3.1f}_{1:3.1f}AA_z0.6_1.2.fits'.format(mgiirewmin, mgiirewmax)
+    if (rew): filename = filename.replace('.fits', '_REW.fits')
+    return join(path, filename)
+
 def velspace_flux_filename(bootstrap=False, binoii=False):
     """
     """
@@ -989,11 +995,11 @@ def single_velocity_nonparametric(absorption, corrected, bootstrap=False):
 
     return outstr
 
-def absorber_measure(overwrite=False):
+def absorber_measure(overwrite=False, mgiirewmin=2.0, mgiirewmax=8.0):
     """
     A stand-alone routine for absorbers
     """
-    infile = '/Users/Benjamin/AstroData/Absorbers/Absorbers_Composite_Allabs_2.0AA_z0.6_1.2.fits'
+    infile = qsostack_absorber_filename(rew=False, mgiirewmin=mgiirewmin, mgiirewmax=mgiirewmax)
     outfile = infile.replace('.fits', '_REW.fits')
     absorberstack = (fitsio.read(infile))[0]
     flux = absorberstack['FLUXMEDIAN']
@@ -1025,11 +1031,8 @@ def absorber_measure(overwrite=False):
     fits.write(outstr)
     fits.close()
 
-def stack_absorber_readin(rew=False):
-    if (not rew):
-        infile = '/Users/Benjamin/AstroData/Absorbers/Absorbers_Composite_Allabs_2.0AA_z0.6_1.2.fits'
-    else:
-        infile = '/Users/Benjamin/AstroData/Absorbers/Absorbers_Composite_Allabs_2.0AA_z0.6_1.2_REW.fits'
+def stack_absorber_readin(rew=False, mgiirewmin=2.0, mgiirewmax=8.0):
+    infile = qsostack_absorber_filename(rew=rew, mgiirewmin=mgiirewmin, mgiirewmax=mgiirewmax) 
     return (fitsio.read(infile))[0]
 
 def starburst_measure(overwrite=False):
@@ -1072,6 +1075,52 @@ def starburst_measure_readin():
     infile0 = starburstspec.mgii_composite_filename()
     infile = infile0.replace('.fits', '_REW.fits')
     return (fitsio.read(infile))[0]
+
+def starburst_measure_jackknife(overwrite=False):
+    """
+    A stand-alone routine for local star-forming regions
+    """
+    infile = starburstspec.mgii_composite_filename()
+    infile = infile.replace('.fits', '_jackknife.fits')
+    outfile = infile.replace('.fits', '_REW.fits')
+    starburststack = starburstspec.mgii_composite_jackknife_readin()
+    flux = starburststack['FLUXMEDIAN']
+    wave = starburststack['WAVE']
+    loglam = np.log10(wave)
+
+    # 4 Lines WITHOUT resonant channels
+    linewave_nofluores = np.array([speclines.FeII2383.wave, speclines.MgII2796.wave,
+        speclines.MgII2803.wave, speclines.MgI2853.wave])
+    # 4 Lines WITH non-resonant channels
+    linewave_yesfluores = np.array([speclines.FeII2344.wave, speclines.FeII2374.wave,
+        speclines.FeII2587.wave, speclines.FeII2600.wave])
+    linewave_all = np.r_[linewave_nofluores, linewave_yesfluores]
+
+    njack = (flux.shape)[1]
+    tflux = np.zeros((linewave_all.size, njack))
+    for ijack in np.arange(njack):
+        for i, thiswave in enumerate(linewave_all):
+            rest_loc = np.searchsorted(loglam, np.log10(thiswave))
+            dwave = np.median(wave[rest_loc-7:rest_loc+7] - wave[rest_loc-8:rest_loc+6])
+            tflux[i, ijack] = np.sum(1.-flux[rest_loc-7:rest_loc+7, ijack])*dwave
+
+    out_dtype = [('LINES', 'f8', linewave_all.shape),
+                 ('TFLUX', 'f8', tflux.shape)]
+
+    outstr = np.array([(linewave_all, tflux)],
+                       dtype=out_dtype)
+
+    # Write out
+    fits = fitsio.FITS(outfile, 'rw', clobber=overwrite)
+    fits.write(outstr)
+    fits.close()
+
+def starburst_measure_readin_jackknife():
+    infile0 = starburstspec.mgii_composite_filename()
+    infile0 = infile0.replace('.fits', '_jackknife.fits')
+    infile = infile0.replace('.fits', '_REW.fits')
+    return (fitsio.read(infile))[0]
+
 
 def unify_absorptionline_profile_binoii(overwrite=False, bootstrap=False):
     """

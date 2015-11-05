@@ -586,16 +586,16 @@ def plot_caiino1():
     # emission
     nemiss = 2
     emission = np.zeros(nemiss, dtype=_transition_dtype)
-    emission[0] = (0.20+xoff, '1/2', '1/2', '3934.77   1.47E8   6.82E-1')
-    emission[1] = (0.20+xoff+0.09, '1/2', '3/2', '3969.59   1.40E8   3.03E-1')
+    emission[0] = (0.20+xoff, '1/2', '1/2', '3969.59   1.36E8   3.21E-1')
+    emission[1] = (0.20+xoff+0.09, '1/2', '3/2', '3934.77   1.40E8   6.48E-1')
     #emission[2] = (0.20+xoff+0.07+xoff1, '3/2', '1/2', '*2328.83   6.78E1   2.76E-8')
     #emission[3] = (0.20+xoff+0.07+xoff1+0.07, '3/2', '3/2', '*2327.64   8.49E0   6.90E-9')
     #emission[4] = (0.20+xoff+0.07+xoff1+0.07+0.07, '3/2', '5/2', '*2326.11   4.43E1   5.40E-8')
     # absorption
     nabs = 2
     absorption = np.zeros(nabs, dtype=_transition_dtype)
-    absorption[0] = (0.20+xoff-0.008, '1/2', '1/2', '3934.77   1.47E8   6.82E-1')
-    absorption[1] = (0.20+xoff+0.09-0.008, '1/2', '3/2', '3969.59   1.40E8   3.03E-1')
+    absorption[0] = (0.20+xoff-0.008, '1/2', '1/2', '3969.59   1.36E8   3.21E-1')
+    absorption[1] = (0.20+xoff+0.09-0.008, '1/2', '3/2', '3934.77   1.40E8   6.48E-1')
     # fine structure
     #finestructure = _TiII_ground_finestructure
 
