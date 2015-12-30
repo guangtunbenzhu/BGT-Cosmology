@@ -5,12 +5,16 @@ __name__ = "setcover"
 __module__ = "Setcover"
 
 __lastdate__ = "2015.12.29"
-__version__ = "0.10"
+__version__ = "0.90"
 
 import warnings
 
 import numpy as np
 from scipy import sparse
+
+# To_do: 
+#    1. Remove redundant columns
+#    2. Clean up wrapper CFT: add fix_col option
 
 # Some magic numbes
 _stepsize = 0.1
