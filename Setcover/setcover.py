@@ -28,7 +28,9 @@ _smallnumber = 1E-5
 class SetCover:
     """
     Set Cover Problem:
-    Instantiation:
+    Instantiation (As an exmpale, use A.4 test instance from Beasley's OR library http://people.brunel.ac.uk/~mastjjb/jeb/orlib/scpinfo.html):
+       a_matrix = np.load('./TestData/scpa4_matrix.npy')
+       cost = np.load('./TestData/scpa4_cost.npy')
        g = SetCover(a_matrix, cost)
     Run the optimization finder:
        g.CFT()
