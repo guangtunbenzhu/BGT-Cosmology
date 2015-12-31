@@ -3,8 +3,9 @@ __author__ = "Guangtun Ben Zhu (BGT) @ Johns Hopkins University"
 __startdate__ = "2015.12.10"
 __name__ = "setcover"
 __module__ = "Setcover"
+__python_version__ = "3.50"
 
-__lastdate__ = "2015.12.29"
+__lastdate__ = "2015.12.31"
 __version__ = "0.90"
 
 import warnings
@@ -13,8 +14,10 @@ import numpy as np
 from scipy import sparse
 
 # To_do: 
-#    1. Remove redundant columns
-#    2. Clean up wrapper CFT: add fix_col option
+#    1. Remove redundant columns (Calculate the sum first then remove column one by one)
+#    2. Clean up wrapper CFT: add fix_col option (to cut time for large instances)
+#    3. Better converging criteria needed (to cut time for small instances)
+#    4. Documentation!
 
 # Some magic numbes
 _stepsize = 0.1
@@ -24,6 +27,14 @@ _smallnumber = 1E-5
 
 class SetCover:
     """
+    Set Cover Problem:
+    Instantiation:
+       g = SetCover(a_matrix, cost)
+    Run the optimization finder:
+       g.CFT()
+    Once it's done:
+       g.s - the (near-optimal) minimal set
+       g.total_cost - the (near-optimal) solution 
     """
 
     def __init__(self, amatrix, cost):
@@ -37,19 +48,19 @@ class SetCover:
         # Magic Numbers 
 
         ## subgradient method
-        self.subg_nadaptive = 30
-        self.subg_nsteps = self.subg_nadaptive*10
+        self.subg_nadaptive = 20
+        self.subg_nsteps = self.subg_nadaptive*15
         self.subg_maxsteps = 100 # How many times we want to perturb the best u and then recalculate 
         self.subg_maxfracchange = 0.00001 # convergence criteria, fractional change
         self.subg_maxabschange = 0.01 # convergence criteria, absolute change
-        self.max_adapt = 0.08 # threshold to half the stepsize
-        self.min_adapt = 0.008 # threshold to increase the stepsize by 1.5
-        self.u_perturb = 0.05 # perturbations
+        self.max_adapt = 0.05 # threshold to half the stepsize
+        self.min_adapt = 0.005 # threshold to increase the stepsize by 1.5
+        self.u_perturb = 0.08 # perturbations
 
         ## column fixing iteration
         self.colfix_maxfracchange = 0.02 # convergence criteria, fractional change
         self.maxiters = 10
-        self.maxfracchange = 0.01 # convergence criteria, fractional change
+        self.maxfracchange = 0.001 # convergence criteria, fractional change
         self.alpha = 1.1
         self.beta = 1.0
 
@@ -128,14 +139,17 @@ class SetCover:
         
         score = np.zeros(self.ncols)
         while (np.count_nonzero(iuncovered) > 0) and (niters <= niters_max):
-            mu = self.a_csc.dot((iuncovered).astype(int)) # It's 5 times faster without indexing, the advantage is made possible by csc_matrix.dot
+            mu = (self.a_csc.dot((iuncovered).astype(int))).astype(float) # It's 5 times faster without indexing, the advantage is made possible by csc_matrix.dot
+            mu[mu<=_smallnumber] = _smallnumber
 
             utmp[~iuncovered] = 0
             gamma = (self.c - self.a_csc.dot(utmp))
             select_gamma = (gamma>=0)
 
-            score[select_gamma] = gamma[select_gamma]/mu[select_gamma]
-            score[~select_gamma] = gamma[~select_gamma]*mu[~select_gamma]
+            if (np.count_nonzero(select_gamma)>0):
+                score[select_gamma] = gamma[select_gamma]/mu[select_gamma]
+            if (np.count_nonzero(~select_gamma)>0):
+                score[~select_gamma] = gamma[~select_gamma]*mu[~select_gamma]
 
             inewcolumn = (np.nonzero(~self.s)[0])[np.argmin(score[~self.s])]
             self.s[inewcolumn] = True
@@ -219,6 +233,8 @@ class SetCover:
                 if (np.mod(i+1,self.subg_nadaptive)==0):
                     Lu_max_adapt = np.amax(Lu_sequence[i+1-self.subg_nadaptive:i+1])
                     Lu_min_adapt = np.amin(Lu_sequence[i+1-self.subg_nadaptive:i+1])
+                    if (Lu_max_adapt <= 0.):
+                        Lu_max_adapt = _smallnumber
                     f_change_adapt = (Lu_max_adapt-Lu_min_adapt)/np.fabs(Lu_max_adapt)
                     if f_change_adapt > self.max_adapt:
                         self.stepsize = self.stepsize*0.5
@@ -289,7 +305,7 @@ class SetCover:
         LB = np.einsum('i->', cost_u[cost_u<0])+np.einsum('i->', utmp) # next lower bound of the Lagrangian subproblem
 
         cost_u[cost_u<0] = 0.
-        s_u = self.a_csr.dot(x.astype(int)) # the number of columns that cover each row
+        s_u = (self.a_csr.dot(x.astype(int))).astype(float) # the number of columns that cover each row
         if (np.count_nonzero(s_u)<1.):
            raise ValueError("The solution you give is not a solution!")
         #gap = utmp*(s_u-1.)/s_u
