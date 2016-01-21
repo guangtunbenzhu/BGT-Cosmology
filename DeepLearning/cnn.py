@@ -158,11 +158,15 @@ class ConvPoolLayer():
 
         # pooling layer 
         self.pool_nabla_b = np.mean(np.einsum('ijkl->ij', self.pool_delta), axis=0)
-        up_pool_delta = maxpooling22_up(self.pool_delta)/4.
+        up_pool_delta = maxpooling22_up(self.pool_delta)
         # print(up_pool_delta.shape, self.pool_delta_a_mul.shape, self.conv_a.shape)
-        self.pool_delta_a_mul = np.einsum('ijkl,ijkl->ij', self.down_conv_a, self.pool_delta) # could speed up by 4x if we downsample self.conv_a instead?
+        self.pool_delta_a_mul = np.einsum('ijkl,ijkl->ij', self.down_conv_a, self.pool_delta) # This is right
+        #self.pool_delta_a_mul = np.einsum('ijkl,ijkl->ij', self.conv_a/4., up_pool_delta) # This is wrong
         self.pool_nabla_w = np.mean(self.pool_delta_a_mul, axis=0)
-        self.delta_w_mul = up_pool_delta*self.pool_weights[np.newaxis,:,np.newaxis,np.newaxis]
+        # Try 2 things:
+        # 1: save the maximum position, other positions have delta == 0
+        # 2: Use mean pooling
+        self.delta_w_mul = up_pool_delta*self.pool_weights[np.newaxis,:,np.newaxis,np.newaxis]*0.5 # This is likely wrong
 
         # convolutional layer
         self.delta = self.delta_w_mul*self.activation_deriv(self.conv_z) # [mini_batch_size, n_features, conva_height, conva_width]
@@ -174,9 +178,13 @@ class ConvPoolLayer():
 
         for i in np.arange(self.n_features):
             for j in np.arange(self.mini_batch_size):
-                self.delta_a_mul[j,i,...] = conv2d(tmp_input[j,...], self.delta[j,i,...], mode='valid')
+                self.delta_a_mul[j,i,:,:,:] = conv2d(tmp_input[j,:,:,:], self.delta[j,i,:,:], mode='valid')
+                # [mini_batch_size, n_features, n_channels, feature_height, feature_width]
 
         self.nabla_w = np.mean(self.delta_a_mul, axis=0)
+        #if firstlayer:
+            # print("ConvPool: ", np.mean(self.delta), np.mean(self.pool_delta))
+        #    print("ConvPool: ", np.mean(self.nabla_b), np.mean(self.nabla_w), np.mean(self.nabla_b), np.mean(self.pool_nabla_w))
         # this is not necessary if it is the first layer
         if (not firstlayer):
             for i in np.arange(self.mini_batch_size):
@@ -292,6 +300,8 @@ class FullyConnectedLayer():
             # print(self.delta.shape, prevlayer.a.shape, newshape, self.delta_a_mul.shape)
         np.matmul(self.delta[:,:,np.newaxis], tmp_input, out=self.delta_a_mul)
         self.nabla_w = np.mean(self.delta_a_mul, axis=0)
+        #if firstlayer: 
+        #if finallayer: print("FullyConnected: ", np.mean(self.delta))
 
         if not firstlayer:
             np.matmul(self.delta, self.weights, out=self.delta_w_mul)
@@ -379,6 +389,7 @@ class Network():
                 self.layers[-l].backprop(prevlayer=self.layers[-l-1], nextlayer=self.layers[-l+1]) # calculate delta, nabla_b, nabla_w
             else:
                 # First layer
+                # print(np.mean(x))
                 self.layers[-l].backprop(nextlayer=self.layers[-l+1], firstlayer=True, rawinput=x) # calculate delta, nabla_b, nabla_w
 
 
@@ -412,8 +423,10 @@ class Network():
                 # backward propogation: calculating gradient
                 self.backprop(training_data[0][index_tmp,...], training_data[1][index_tmp,...])
                 # backward propagation: update parameters with gradient descent
+                # print(np.median(self.layers[0].nabla_w), np.median(self.layers[0].nabla_b))
                 self.update_minibatch()
 
+            print("Cost = ", self.cost_func(self.layers[-1].a, training_data[1][index_tmp,...]))
             if ('test_data' is not None):
                 print("Epoch {0}: {1} / {2}".format(i, self.evaluate(test_data), n_test))
             else:

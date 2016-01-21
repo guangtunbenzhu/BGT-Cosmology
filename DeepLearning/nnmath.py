@@ -44,7 +44,7 @@ quadratic = lambda a, y: 0.5*np.sum(np.square(a-y), axis=1)
 quadratic_deriv = lambda a, y: a-y
 quadratic_delta = lambda z, a, y: (a-y)*sigmoid_deriv(z)
 #### cross entropy
-crossentropy = lambda a, y: np.sum(y*np.log(a)+(1.-y)*np.log(1.-a), axis=1)
+crossentropy = lambda a, y: -np.sum(y*np.log(a)+(1.-y)*np.log(1.-a)) #, axis=1)
 crossentropy_deriv = lambda a, y: np.sum(y/a-(1.-y)/(1.-a), axis=1)
 crossentropy_delta = lambda z, a, y: a-y
 #### to add: log-likelihood
