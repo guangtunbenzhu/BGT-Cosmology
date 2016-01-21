@@ -74,18 +74,39 @@ def conv2d(x, y, mode='valid'):
         raise ValueError("Only 'full', 'same', and 'valid' FFT modes are supported.")
 
 
-def maxpooling22_down(input_image):
+def maxpooling22_down(input_image, mask=None):
     """
     down-pooling with pool size 2x2, with numpy.fmax
     """
+    if mask is None:
+        mask = np.zeros(input_image.shape, dtype=bool)
+    else:
+        assert np.array_equal(np.asarray(mask.shape),np.asarray(input_image.shape)), "image and mask must have the same shape."
     nimages = np.prod(input_image.shape[:-2]) # collapse the first two arrays to speed up
-    newshape = np.r_[nimages, np.asarray([input_image.shape[-2]//2, 2, input_image.shape[-1]//2, 2])]
+    newshape = np.r_[nimages, np.asarray([input_image.shape[-2]//2, 2, input_image.shape[-1]//2, 2])].astype(int)
     image_view = input_image.reshape(newshape)
-    xtmp = np.fmax(image_view[...,0], image_view[...,1])
-    newshape_out = np.r_[np.asarray(input_image.shape[:-2]), np.asarray([input_image.shape[-2]//2, input_image.shape[-1]//2])]
-    return np.fmax(xtmp[...,0,:], xtmp[...,1,:]).reshape(newshape_out)
+    mask_view = mask.reshape(newshape)
+    tmp_mask = np.zeros(newshape[:-1], dtype=bool)
 
-def maxpooling22_up(input_image):
+    assert ~mask_view.flags['OWNDATA'], "mask_view needs to be a view."
+    
+    mask_view[...,0] = image_view[...,0] > image_view[...,1]
+    mask_view[...,1] = ~mask_view[...,0]
+    # xtmp = np.fmax(image_view[...,0], image_view[...,1])
+    # print(image_view[mask_view].shape, newshape)
+    xtmp = image_view[mask_view].reshape(newshape[:-1]) # This is Ok because it's the last axis
+
+    tmp_mask[...,0,:] = xtmp[...,0,:] > xtmp[...,1,:]
+    tmp_mask[...,1,:] = ~tmp_mask[...,0,:]
+    for i in np.arange(2):
+        mask_view[...,i] = np.logical_and(mask_view[...,i], tmp_mask)
+
+    newshape_out = np.r_[np.asarray(input_image.shape[:-2]), np.asarray([input_image.shape[-2]//2, input_image.shape[-1]//2])]
+    # return xtmp[tmp_mask].reshape(newshape_out) # This is not Ok because it's not the last axis
+    return np.fmax(xtmp[...,0,:], xtmp[...,1,:]).reshape(newshape_out)
+    # return np.sum(np.sum(image_view, axis=-1), axis=-2).reshape(newshape_out)/4.
+
+def maxpooling22_up(input_image, mask=None):
     """
     up-pooling with pool size 2x2
     for dz[l+1]/da[l] and detal[l]
@@ -97,7 +118,12 @@ def maxpooling22_up(input_image):
         for j in (0,1):
             output_image[...,i,:,j] = input_image
     newshape_out = np.r_[np.asarray(input_image.shape[:-2]), np.asarray([input_image.shape[-2]*2, input_image.shape[-1]*2])]
-    return output_image.reshape(newshape_out)
+    output_image_view = output_image.reshape(newshape_out)
+    # print(input_image.shape, newshape_out, output_image_view.shape, mask.shape)
+    if mask is not None:
+        #output_image_view[~mask] = output_image_view[~mask]*0E-2
+        output_image_view[~mask] = 0.
+    return output_image_view
 
 activationfunc = {'sigmoid': {'function': sigmoid, 'derivative': sigmoid_deriv}}
 #                   'rectified': {'function': rectified, 'derivative':rectified_deriv}}

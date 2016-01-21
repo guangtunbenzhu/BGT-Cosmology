@@ -85,6 +85,7 @@ class ConvPoolLayer():
         self.pool_delta_a_mul = np.zeros(np.r_[self.mini_batch_size, np.asarray(self.pool_weights.shape)]) # for dC/dw
         self.delta_w_mul = np.zeros(self.z.shape) # for delta in the previous (convolution) layer
 
+        self.mask_conv_a = np.zeros(self.conv_z.shape, dtype=bool)
         self.down_conv_a = np.zeros(self.z.shape)
 
     def set_parameters(self, stepsize=1.0, reg_lambda=1E-5):
@@ -119,7 +120,8 @@ class ConvPoolLayer():
         conv_a = self.activation_func(conv_z)
 
         # pooling layer, max(2,2)
-        down_conv_a = maxpooling22_down(conv_a)
+        mask_conv_a = np.zeros(conv_a.shape, dtype=bool)
+        down_conv_a = maxpooling22_down(conv_a, mask=mask_conv_a)
         z = down_conv_a*self.pool_weights[np.newaxis,:,np.newaxis,np.newaxis] \
                               + self.pool_biases[np.newaxis,:,np.newaxis,np.newaxis]
         a = self.activation_func(z)
@@ -129,6 +131,7 @@ class ConvPoolLayer():
             self.conv_z = conv_z
             self.conv_a = conv_a
             self.down_conv_a = down_conv_a
+            self.mask_conv_a = mask_conv_a
             self.z = z
             self.a = a
         return a
@@ -158,7 +161,8 @@ class ConvPoolLayer():
 
         # pooling layer 
         self.pool_nabla_b = np.mean(np.einsum('ijkl->ij', self.pool_delta), axis=0)
-        up_pool_delta = maxpooling22_up(self.pool_delta)
+        up_pool_delta = maxpooling22_up(self.pool_delta, mask=self.mask_conv_a)
+        # up_pool_delta = maxpooling22_up(self.pool_delta)
         # print(up_pool_delta.shape, self.pool_delta_a_mul.shape, self.conv_a.shape)
         self.pool_delta_a_mul = np.einsum('ijkl,ijkl->ij', self.down_conv_a, self.pool_delta) # This is right
         #self.pool_delta_a_mul = np.einsum('ijkl,ijkl->ij', self.conv_a/4., up_pool_delta) # This is wrong
@@ -166,7 +170,7 @@ class ConvPoolLayer():
         # Try 2 things:
         # 1: save the maximum position, other positions have delta == 0
         # 2: Use mean pooling
-        self.delta_w_mul = up_pool_delta*self.pool_weights[np.newaxis,:,np.newaxis,np.newaxis]*0.5 # This is likely wrong
+        self.delta_w_mul = up_pool_delta*self.pool_weights[np.newaxis,:,np.newaxis,np.newaxis]*1. # This is likely wrong
 
         # convolutional layer
         self.delta = self.delta_w_mul*self.activation_deriv(self.conv_z) # [mini_batch_size, n_features, conva_height, conva_width]
@@ -191,7 +195,8 @@ class ConvPoolLayer():
                 for j in np.arange(self.n_channels):
                     for k in np.arange(self.n_features):
                         self.all_delta_w_mul[i,j,k,...] = \
-                            conv2d(self.delta[i,k,...], self.weights[k,j,::-1, ::-1], mode='full')
+                            conv2d(self.delta[i,k,...], self.weights[k,j,...], mode='full') # Is this right. Do we need to flip the weights?
+                            #conv2d(self.delta[i,k,...], self.weights[k,j,::-1, ::-1], mode='full') # Is this right. Do we need to flip the weights?
                         # all_delta_w_mul [mini_batch_size, n_channels, n_features, image_height, image_width]
                         # delta [mini_batch_size, n_features, conva_height, conva_width]
                         # weights [n_features, n_channels, feature_height, feature_width]
