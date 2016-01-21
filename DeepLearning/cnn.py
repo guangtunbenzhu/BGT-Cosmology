@@ -7,6 +7,8 @@ __module__ = "Network"
 __lastdate__ = "2016.01.19"
 __version__ = "0.01"
 
+# To-do:
+#   Check if stepsize is the problem
 import numpy as np
 import time
 
@@ -49,13 +51,13 @@ class ConvPoolLayer():
 
         self.biases = np.random.randn(self.n_features)
         self.weights = np.true_divide(np.random.randn(self.n_features, self.n_channels, feature_shape[-2], feature_shape[-1]), \
-                           np.sqrt(np.prod(feature_shape)/np.prod(poolsize))) # Is n_channels dimension necessary?
+                           np.sqrt(np.prod(image_shape))) # Is n_channels dimension necessary?
         self.pool_biases = np.random.randn(self.n_features)
-        self.pool_weights = np.random.randn(self.n_features)
+        self.pool_weights = np.random.randn(self.n_features)/np.sqrt(np.prod(feature_shape))
 
         if learning:
             self.set_mini_batch_size(10)
-            self.set_parameters(10)
+            self.set_parameters()
 
     def set_mini_batch_size(self, mini_batch_size):
         """
@@ -70,9 +72,9 @@ class ConvPoolLayer():
         self.conv_a = np.zeros(self.conv_z.shape)
         self.delta = np.zeros(self.conv_z.shape)
         self.delta_a_mul = np.zeros(np.r_[self.mini_batch_size, np.asarray(self.weights.shape)]) # for dC/dw
-        self.all_delta_w_mul = np.zeros((self.mini_batch_size, self.n_channels, self.n_features, \
+        self.all_conv_delta_w_mul = np.zeros((self.mini_batch_size, self.n_channels, self.n_features, \
                               self.image_shape[1], self.image_shape[2]))
-        self.delta_w_mul = np.zeros(self.image_shape) # for previous layer
+        self.conv_delta_w_mul = np.zeros(self.image_shape) # for previous layer
 
         # pooling layer
         self.pool_nabla_b = np.zeros(self.pool_biases.shape)
@@ -81,11 +83,13 @@ class ConvPoolLayer():
         self.a = np.zeros(self.z.shape)
         self.pool_delta = np.zeros(self.z.shape)
         self.pool_delta_a_mul = np.zeros(np.r_[self.mini_batch_size, np.asarray(self.pool_weights.shape)]) # for dC/dw
-        self.pool_delta_w_mul = np.zeros(self.z.shape) # for delta in the previous (convolution) layer
+        self.delta_w_mul = np.zeros(self.z.shape) # for delta in the previous (convolution) layer
+
+        self.down_conv_a = np.zeros(self.z.shape)
 
     def set_parameters(self, stepsize=1.0, reg_lambda=1E-5):
         """
-        Set up temporary memory for a given mini_batch_size
+        Set the SGD parameters
         """
         self.stepsize = stepsize
         self.reg_lambda = reg_lambda
@@ -102,7 +106,7 @@ class ConvPoolLayer():
         assert input_image.shape[1] == self.n_channels, \
                "The input image's n_channels does not match the weights."
 
-        conv_temp = np.zeros((input_image.shape[0], self.n_channels, self.n_features, \
+        conv_temp = np.zeros((input_image.shape[0], input_image.shape[1], self.n_features, \
                               input_image.shape[2]-self.feature_shape[1]+1, \
                               input_image.shape[3]-self.feature_shape[2]+1))
         # convolution layer: bottleneck
@@ -115,7 +119,8 @@ class ConvPoolLayer():
         conv_a = self.activation_func(conv_z)
 
         # pooling layer, max(2,2)
-        z = maxpooling22_down(conv_a)*self.pool_weights[np.newaxis,:,np.newaxis,np.newaxis] \
+        down_conv_a = maxpooling22_down(conv_a)
+        z = down_conv_a*self.pool_weights[np.newaxis,:,np.newaxis,np.newaxis] \
                               + self.pool_biases[np.newaxis,:,np.newaxis,np.newaxis]
         a = self.activation_func(z)
         # print(conv_temp.shape, z.shape, a.shape, pool_z.shape, pool_a.shape)
@@ -123,6 +128,7 @@ class ConvPoolLayer():
         if minibatch: # revisit to check view or copy
             self.conv_z = conv_z
             self.conv_a = conv_a
+            self.down_conv_a = down_conv_a
             self.z = z
             self.a = a
         return a
@@ -152,23 +158,23 @@ class ConvPoolLayer():
 
         # pooling layer 
         self.pool_nabla_b = np.mean(np.einsum('ijkl->ij', self.pool_delta), axis=0)
-        up_pool_delta = maxpooling22_up(self.pool_delta)
+        up_pool_delta = maxpooling22_up(self.pool_delta)/4.
         # print(up_pool_delta.shape, self.pool_delta_a_mul.shape, self.conv_a.shape)
-        self.pool_delta_a_mul = np.einsum('ijkl,ijkl->ij', self.conv_a, up_pool_delta) # could speed up by 4x if we downsample self.conv_a instead?
+        self.pool_delta_a_mul = np.einsum('ijkl,ijkl->ij', self.down_conv_a, self.pool_delta) # could speed up by 4x if we downsample self.conv_a instead?
         self.pool_nabla_w = np.mean(self.pool_delta_a_mul, axis=0)
-        self.pool_delta_w_mul = up_pool_delta*self.pool_weights[np.newaxis,:,np.newaxis,np.newaxis]
+        self.delta_w_mul = up_pool_delta*self.pool_weights[np.newaxis,:,np.newaxis,np.newaxis]
 
         # convolutional layer
-        self.delta = self.pool_delta_w_mul*self.activation_deriv(self.conv_z) # [mini_batch_size, n_features, conva_height, conva_width]
+        self.delta = self.delta_w_mul*self.activation_deriv(self.conv_z) # [mini_batch_size, n_features, conva_height, conva_width]
         self.nabla_b = np.mean(np.einsum('ijkl->ij', self.delta), axis=0)
         if firstlayer:
-            for i in np.arange(self.n_features):
-                for j in np.arange(self.mini_batch_size):
-                    self.delta_a_mul[j,i,...] = conv2d(rawinput[j,...], self.delta[j,i,...], mode='valid')
+            tmp_input = rawinput
         else:
-            for i in np.arange(self.n_features):
-                for j in np.arange(self.mini_batch_size):
-                    self.delta_a_mul[j,i,...] = conv2d(prevlayer.a[j,...], self.delta[j,i,...], mode='valid')
+            tmp_input = prevlayer.a
+
+        for i in np.arange(self.n_features):
+            for j in np.arange(self.mini_batch_size):
+                self.delta_a_mul[j,i,...] = conv2d(tmp_input[j,...], self.delta[j,i,...], mode='valid')
 
         self.nabla_w = np.mean(self.delta_a_mul, axis=0)
         # this is not necessary if it is the first layer
@@ -233,7 +239,7 @@ class FullyConnectedLayer():
 
     def set_parameters(self, stepsize=1.0, reg_lambda=1E-5):
         """
-        Set up temporary memory for a given mini_batch_size
+        Set the SGD parameters
         """
         self.stepsize = stepsize
         self.reg_lambda = reg_lambda
@@ -279,11 +285,12 @@ class FullyConnectedLayer():
         self.nabla_b = np.mean(self.delta, axis=0)
         if firstlayer:
             newshape = (rawinput.shape[0], 1, np.prod(rawinput.shape[1:]))
-            np.matmul(self.delta[:,:,np.newaxis], rawinput.reshape(newshape), out=self.delta_a_mul)
+            tmp_input = rawinput.reshape(newshape)
         else:
             newshape = (prevlayer.a.shape[0], 1, np.prod(prevlayer.a.shape[1:]))
+            tmp_input = prevlayer.a.reshape(newshape)
             # print(self.delta.shape, prevlayer.a.shape, newshape, self.delta_a_mul.shape)
-            np.matmul(self.delta[:,:,np.newaxis], prevlayer.a.reshape(newshape), out=self.delta_a_mul)
+        np.matmul(self.delta[:,:,np.newaxis], tmp_input, out=self.delta_a_mul)
         self.nabla_w = np.mean(self.delta_a_mul, axis=0)
 
         if not firstlayer:
