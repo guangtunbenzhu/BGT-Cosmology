@@ -8,7 +8,8 @@ __lastdate__ = "2016.01.19"
 __version__ = "0.01"
 
 # To-do:
-#   Check if stepsize is the problem
+#   - Need to make stepsize adaptive
+#   - Perturb the results every 100 mini_batches and choose the best solution and restart with smaller stepsize?
 import numpy as np
 import time
 
@@ -88,12 +89,12 @@ class ConvPoolLayer():
         self.mask_conv_a = np.zeros(self.conv_z.shape, dtype=bool)
         self.down_conv_a = np.zeros(self.z.shape)
 
-    def set_parameters(self, stepsize=1.0, reg_lambda=1E-5):
+    def set_parameters(self, stepsize=1.0, overfit_lambda=1E-5):
         """
         Set the SGD parameters
         """
         self.stepsize = stepsize
-        self.reg_lambda = reg_lambda
+        self.overfit_lambda = overfit_lambda
 
     def feedforward(self, input_image, minibatch=False):
         """
@@ -141,6 +142,8 @@ class ConvPoolLayer():
             firstlayer=False, rawinput=None):
         """
         This should be the final step
+        Using mean pooling makes z differentiable.
+        Using max pooling doesn't seem to be working yet.
         """
         if finallayer:
             assert delta is not None, \
@@ -170,7 +173,7 @@ class ConvPoolLayer():
         # Try 2 things:
         # 1: save the maximum position, other positions have delta == 0
         # 2: Use mean pooling
-        self.delta_w_mul = up_pool_delta*self.pool_weights[np.newaxis,:,np.newaxis,np.newaxis]*1. # This is likely wrong
+        self.delta_w_mul = up_pool_delta*self.pool_weights[np.newaxis,:,np.newaxis,np.newaxis] # This is likely wrong
 
         # convolutional layer
         self.delta = self.delta_w_mul*self.activation_deriv(self.conv_z) # [mini_batch_size, n_features, conva_height, conva_width]
@@ -180,10 +183,15 @@ class ConvPoolLayer():
         else:
             tmp_input = prevlayer.a
 
-        for i in np.arange(self.n_features):
-            for j in np.arange(self.mini_batch_size):
-                self.delta_a_mul[j,i,:,:,:] = conv2d(tmp_input[j,:,:,:], self.delta[j,i,:,:], mode='valid')
+        for j in np.arange(self.mini_batch_size):
+            for i in np.arange(self.n_features):
+                self.delta_a_mul[j,i,:,:,:] = conv2d(tmp_input[j,:,::-1,::-1], self.delta[j,i,:,:], mode='valid') # Flip A first
                 # [mini_batch_size, n_features, n_channels, feature_height, feature_width]
+
+        #for i in np.arange(self.n_features):
+        #    for j in np.arange(self.n_channels):
+        #        conv_temp[:,j,i,:,:] = conv2d(input_image[:,j,:,:], self.weights[i,j,:,:], mode='valid')
+        #conv_z = np.sum(conv_temp, axis=1)+self.biases[np.newaxis,:,np.newaxis,np.newaxis]       
 
         self.nabla_w = np.mean(self.delta_a_mul, axis=0)
         #if firstlayer:
@@ -210,11 +218,11 @@ class ConvPoolLayer():
         """
 
         #updates pooling weights
-        self.pool_weights = (1.-self.stepsize*self.reg_lambda)*self.pool_weights-self.stepsize*self.pool_nabla_w
+        self.pool_weights = (1.-self.stepsize*self.overfit_lambda)*self.pool_weights-self.stepsize*self.pool_nabla_w
         self.pool_biases = self.pool_biases-self.stepsize*self.pool_nabla_b
 
         #updates weights
-        self.weights = (1.-self.stepsize*self.reg_lambda)*self.weights-self.stepsize*self.nabla_w
+        self.weights = (1.-self.stepsize*self.overfit_lambda)*self.weights-self.stepsize*self.nabla_w
         self.biases = self.biases-self.stepsize*self.nabla_b
 
 class FullyConnectedLayer():
@@ -250,12 +258,12 @@ class FullyConnectedLayer():
         self.delta_a_mul = np.zeros(np.r_[self.mini_batch_size, np.asarray(self.weights.shape)]) # for dC/dw
         self.delta_w_mul = np.zeros((self.mini_batch_size, self.ndim_input)) # for previous layer
 
-    def set_parameters(self, stepsize=1.0, reg_lambda=1E-5):
+    def set_parameters(self, stepsize=1.0, overfit_lambda=1E-5):
         """
         Set the SGD parameters
         """
         self.stepsize = stepsize
-        self.reg_lambda = reg_lambda
+        self.overfit_lambda = overfit_lambda
 
     def feedforward(self, a_in, minibatch=False): 
         """
@@ -316,7 +324,7 @@ class FullyConnectedLayer():
         Update mini batch, if the convolution layer and pooling layer are separated, 
         this can be incorporated into the routine SGD as a single piece of code.
         """
-        self.weights = (1.-self.stepsize*self.reg_lambda)*self.weights-self.stepsize*self.nabla_w
+        self.weights = (1.-self.stepsize*self.overfit_lambda)*self.weights-self.stepsize*self.nabla_w
         self.biases = self.biases-self.stepsize*self.nabla_b
 
 
@@ -341,7 +349,7 @@ class Network():
         # set learning parameters
         if learning:
             self.set_mini_batch_size(10)
-            self.set_parameters(stepsize=1.0, reg_lambda=1E-5)
+            self.set_parameters(stepsize=1.0, overfit_lambda=1E-5)
 
         # only in test version
         self.time_test = np.zeros(10)
@@ -354,16 +362,18 @@ class Network():
         for layer in self.layers:
             layer.set_mini_batch_size(mini_batch_size)
 
-    def set_parameters(self, stepsize=1.0, reg_lambda=1E-5):
+    def set_parameters(self, stepsize=1.0, overfit_lambda=1E-5):
         """
         set learning parameters
         """
         # stepsize in gradient descent
         self.stepsize = stepsize # should be adaptive
         # regulation parameters 
-        self.reg_lambda = reg_lambda # should be adaptive
+        self.overfit_lambda = overfit_lambda # should be adaptive
+        l = 0.5
         for layer in self.layers:
-            layer.set_parameters(stepsize=stepsize, reg_lambda=reg_lambda)
+            layer.set_parameters(stepsize=stepsize*l, overfit_lambda=overfit_lambda)
+            l = l*0.5
 
     def feedforward(self, a):
         """
@@ -433,7 +443,8 @@ class Network():
 
             print("Cost = ", self.cost_func(self.layers[-1].a, training_data[1][index_tmp,...]))
             if ('test_data' is not None):
-                print("Epoch {0}: {1} / {2}".format(i, self.evaluate(test_data), n_test))
+                test_results = self.evaluate(test_data)
+                print("Epoch {0}: {1} / {2} = {3:6.3f}%".format(i, test_results, n_test, test_results/n_test*100.))
             else:
                 print("Epoch {0} complete".format(i))
 

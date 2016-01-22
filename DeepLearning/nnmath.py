@@ -102,7 +102,6 @@ def maxpooling22_down(input_image, mask=None):
         mask_view[...,i] = np.logical_and(mask_view[...,i], tmp_mask)
 
     newshape_out = np.r_[np.asarray(input_image.shape[:-2]), np.asarray([input_image.shape[-2]//2, input_image.shape[-1]//2])]
-    # return xtmp[tmp_mask].reshape(newshape_out) # This is not Ok because it's not the last axis
     return np.fmax(xtmp[...,0,:], xtmp[...,1,:]).reshape(newshape_out)
     # return np.sum(np.sum(image_view, axis=-1), axis=-2).reshape(newshape_out)/4.
 
