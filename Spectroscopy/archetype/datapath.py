@@ -33,6 +33,13 @@ def sdss_path():
     """
     return join(_parent_path, 'SDSS')
 
+# Garching
+def garching_path():
+    """Path to MPA-JHU Garching data
+    """
+    return join(_parent_path, 'Garching')
+
+
 # Lines
 def lines_path():
     """Path to absorption/emission lines

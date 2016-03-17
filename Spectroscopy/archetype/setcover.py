@@ -5,7 +5,7 @@ __name__ = "setcover"
 __module__ = "Setcover"
 __python_version__ = "3.50"
 
-__lastdate__ = "2015.12.31"
+__lastdate__ = "2016.03.16"
 __version__ = "0.90"
 
 import warnings
