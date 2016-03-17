@@ -5,7 +5,7 @@ __name__ = "setcover"
 __module__ = "Setcover"
 __python_version__ = "3.50"
 
-__lastdate__ = "2015.12.31"
+__lastdate__ = "2016.03.16"
 __version__ = "0.90"
 
 import warnings
@@ -113,7 +113,7 @@ class SetCover:
         if (np.count_nonzero(n_covered_col) != self.mrows):
            raise ValueError("There are uncovered rows! Please check your input!")
         if (np.any(n_covered_col==1)):
-           inonzero = self.a_csr[n_covered==1,:].nonzero()
+           inonzero = self.a_csr[n_covered_col==1,:].nonzero()
            ifix[inonzero[1]] = True
 
         return ifix
@@ -189,6 +189,7 @@ class SetCover:
         mrows = a_csr.shape[0]
         ncols = a_csr.shape[1]
         u_this = self.u[~self.f_covered]
+        # np.einsum is 20% faster than np.sum ...
         UB_fixed = np.einsum('i->', self.c[self.f])
         UB = UB_full - UB_fixed
         cost = self.c[~self.f]
