@@ -5,19 +5,23 @@ __name__ = "setcover"
 __module__ = "Setcover"
 __python_version__ = "3.50"
 
-__lastdate__ = "2016.03.16"
+__lastdate__ = "2016.04.19"
 __version__ = "0.90"
+
+""" 
+[SUMMARY] 
+    This is the main piece of code for SCP, developed and maintained by Guangtun Ben Zhu. 
+    The code combines the greedy and Lagrangian relaxation algorithms to solve SCP.
+    For the standard tests (4,5,6, A-G instances from Beasley's OR Library), the code yields 
+    solutions that are on average 99% optimal. 
+
+    The code can still be improved and any feedback will be greatly appreciated.
+"""
 
 import warnings
 
 import numpy as np
 from scipy import sparse
-
-# To_do: 
-#    1. Remove redundant columns (Calculate the sum first then remove column one by one)
-#    2. Clean up wrapper CFT: add fix_col option (to cut time for large instances)
-#    3. Better converging criteria needed (to cut time for small instances)
-#    4. Documentation!
 
 # Some magic numbes
 _stepsize = 0.1
@@ -27,19 +31,41 @@ _smallnumber = 1E-5
 
 class SetCover:
     """
-    Set Cover Problem:
-    Instantiation (As an exmpale, use A.4 test instance from Beasley's OR library http://people.brunel.ac.uk/~mastjjb/jeb/orlib/scpinfo.html):
-       a_matrix = np.load('./TestData/scpa4_matrix.npy')
-       cost = np.load('./TestData/scpa4_cost.npy')
-       g = SetCover(a_matrix, cost)
-    Run the optimization finder:
-       g.CFT()
-    Once it's done:
-       g.s - the (near-optimal) minimal set
-       g.total_cost - the (near-optimal) solution 
+    Set Cover Problem - Find a set of columns that cover all the rows with minimal cost.
+
+    Algorithm:
+        -- greedy: 
+        -- Lagrangian relaxation:
+    Input: 
+        -- a_matrix[mrows, ncols], the covering binary matrix, a_matrix[irow, jcol] = True if jcol covers irow
+        -- cost[ncols], the cost of columns
+
+    (Use A.4 instance from Beasley's OR library (http://people.brunel.ac.uk/~mastjjb/jeb/orlib/scpinfo.html) as an example)
+    Instantiation: 
+        a_matrix = np.load('./TestData/scpa4_matrix.npy')
+        cost = np.load('./TestData/scpa4_cost.npy')
+    Run the solver: 
+        g.SolveSCP()
+
+    Output:
+        -- g.s, the (near-optimal) minimal set of columns, a binary 1D array, g.s[jcol] = True if jcol is selected
+        -- g.total_cost, the total cost of the (near-optimal) minimal set of columns
+    Comments:
+        -- 
+    To_do:
+        -- Remove redundant columns (Calculate the sum first then remove column one by one)
+        -- Clean up wrapper SolveSCP: add fix_col option (to cut time for large instances)
+        -- Better converging criteria needed (to cut time for small instances)
+    History:
+        -- 19-APR-2016, Documented, BGT, JHU
+        -- 10-Dec-2015, Started, BGT, JHU
+        -- DD-MMM-2010, Conceived, BGT, NYU
     """
 
     def __init__(self, amatrix, cost):
+        """
+        Initialization
+        """
         self.a = np.copy(amatrix)
         self.a_csr = sparse.csr_matrix(amatrix, copy=True) # Compressed sparse row
         self.a_csc = sparse.csr_matrix(amatrix.T, copy=True) # Compressed sparse column (transposed for convenience)
@@ -78,10 +104,14 @@ class SetCover:
     @property
     def total_cost(self):
         """
+        Total cost of a given set s
         """
         return np.einsum('i->', self.c[self.s])
 
     def reset_all(self):
+        """
+        Reset the parameters to start over
+        """
         self.stepsize = _stepsize
         self.pi = _pi
         self.reset_f()
@@ -89,24 +119,34 @@ class SetCover:
         self.reset_u()
 
     def reset_s(self):
+        """
+        Reset s, the selected columns
+        """
         self.s = np.copy(self.f_uniq) # (current) solution, selected column
 
     def reset_f(self):
+        """
+        Reset f, the fixed columns
+        """
         self.f = np.copy(self.f_uniq)
         self.f_covered = np.any(self.a[:,self.f], axis=1)
 
     def reset_u(self):
+        """
+        Reset u, the Lagrangian multiplier
+        """
         self.u = self._u_naught()
 
     #def _u_naught(self):
     def _u_naught_simple(self):
         """
-        initial guess of the Lagrangian multiplier
+        Initial guess of the Lagrangian multiplier with random numbers
         """
         return np.random.rand(self.mrows) # Random is better to give different multipliers in the subgradient phase
 
     def _fix_uniq_col(self):
         """
+        Fix the unique columns that have to be in the minimal set
         """
         n_covered_col = self.a_csr.dot(np.ones(self.ncols)) # subgradient; for two boolean arrays, multiplication seems to be the best way (equivalent to logical_and)
         ifix = np.zeros(self.ncols, dtype=bool)
@@ -121,7 +161,8 @@ class SetCover:
     #def _u_naught_complicated(self):
     def _u_naught(self):
         """
-        initial guess of the Lagrangian multiplier
+        Initial guess of the Lagrangian multiplier with greedy algorithm
+        This is the default initializer
         """
         adjusted_cost = self.c/self.a_csc.dot(np.ones(self.mrows))
         cost_matrix = adjusted_cost*self.a + np.amax(adjusted_cost)*(~self.a)
@@ -129,7 +170,7 @@ class SetCover:
 
     def greedy(self, u=None, niters_max=1000):
         """
-        heuristic greedy method to select a set of columns to cover all the rows
+        Heuristic greedy method to select a set of columns to cover all the rows
         """
 
         niters = 1
@@ -178,7 +219,7 @@ class SetCover:
 
     def subgradient(self):
         """
-        subgradient step for the core problem N\S. 
+        Subgradient step for the core problem N\S. 
         """
         
         UB_full = self.total_cost
@@ -291,6 +332,7 @@ class SetCover:
 
     def fix_col(self, u=None):
         """
+        Fix the columns with the highest score
         Note this needs to be done after greedy()
         """
         # calculate delta (gap between the lower and upper bounds)
@@ -329,8 +371,9 @@ class SetCover:
            self.f[x.nonzero()[0][isort[0:itemp]]] = True # This doesn't work because the left hand side returns a copy, not a view
         self.f_covered = np.any(self.a[:,self.f], axis=1)
 
-    def CFT(self):
+    def SolveSCP(self):
         """
+        The wrapper, Solve the SCP
         """
 
         # Some predicates
@@ -356,6 +399,7 @@ class SetCover:
                 scp_all[i] = self.greedy(u=u[:,i])
 
             # check if the solution is gettting better
+            # Why not use argmin here?
             imin_tmp = (np.where(scp_all==np.amin(scp_all)))[0]
             imin = imin_tmp[np.argmax(Lu[imin_tmp])]
             imax = np.argmax(Lu)
